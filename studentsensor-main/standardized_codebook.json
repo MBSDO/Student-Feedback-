@@ -1,0 +1,92 @@
+[
+  {
+    "category": "instructional clarity",
+    "definition": "Comments about how clearly the instructor explained course material and organized the course structure.",
+    "examples": [
+      "clear explanations",
+      "organized lectures",
+      "helpful diagrams"
+    ]
+  },
+  {
+    "category": "professor demeanor",
+    "definition": "Comments reflecting the professor's attitude, personality, and interaction with students.",
+    "examples": [
+      "approachable",
+      "caring about students",
+      "funny and engaging"
+    ]
+  },
+  {
+    "category": "course difficulty",
+    "definition": "Comments related to the perceived difficulty of the course material and assessments.",
+    "examples": [
+      "challenging class",
+      "difficult tests",
+      "hard subject"
+    ]
+  },
+  {
+    "category": "student engagement",
+    "definition": "Comments about the level of student involvement and participation encouraged in the class.",
+    "examples": [
+      "active participation",
+      "engaging class",
+      "interactive teaching"
+    ]
+  },
+  {
+    "category": "feedback and responsiveness",
+    "definition": "Comments on how well the instructor and TAs responded to student feedback and questions.",
+    "examples": [
+      "responsive to student needs",
+      "listened to feedback",
+      "quick email responses"
+    ]
+  },
+  {
+    "category": "use of technology",
+    "definition": "Comments on the integration and effectiveness of technology and online resources in the course.",
+    "examples": [
+      "YouTube learning",
+      "online textbook",
+      "recorded lectures"
+    ]
+  },
+  {
+    "category": "grading and assessment",
+    "definition": "Comments regarding the fairness, clarity, and structure of grading and assessments.",
+    "examples": [
+      "fair grading",
+      "clear grading criteria",
+      "confusing grading"
+    ]
+  },
+  {
+    "category": "course content relevance",
+    "definition": "Comments about the relevance and applicability of the course content to real-world scenarios.",
+    "examples": [
+      "real-world application",
+      "relevant material",
+      "applicable learning"
+    ]
+  },
+  {
+    "category": "workload and time management",
+    "definition": "Comments on the amount of work required and the ability to manage time effectively in the course.",
+    "examples": [
+      "heavy workload",
+      "time-consuming projects",
+      "manageable workload"
+    ]
+  },
+  {
+    "category": "spiritual and ethical integration",
+    "definition": "Comments on the integration of spiritual or ethical elements into the course.",
+    "examples": [
+      "spiritual insights",
+      "moral and ethical",
+      "gospel discussions"
+    ]
+  }
+]

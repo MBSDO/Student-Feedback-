@@ -1,0 +1,29 @@
+# Node modules
+node_modules/
+
+# Secrets
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Scripts
+*.command
+
+# Archives or backups
+_old/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+venv/
+__pycache__/
+.pytest_cache/
+
+# Temporary files
+tmp/

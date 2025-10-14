@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Rating Analysis</title>
+    <link rel="stylesheet" href="/styles/bootstrap/css/bootstrap.min.css" />
+    <link
+      rel="stylesheet"
+      href="/styles/bootstrap-icons/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="/styles/styles.css" />
+    <link rel="stylesheet" href="/styles/bootstrap-slider.min.css" />
+    <link rel="icon" href="/images/favicon.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/images/apple-touch-icon.png" />
+  </head>
+
+  <body>
+    <div class="d-flex flex-column vh-100 align-items-stretch overflow-hidden">
+      <!-- Header -->
+      <div
+        class="d-flex align-items-center justify-content-between bg-byu text-white"
+      >
+        <div class="d-flex align-items-center">
+          <button
+            class="btn fs-2 me-2 ms-0 ps-0 text-white"
+            role="close-button"
+          >
+            <span class="bi-chevron-left"></span><span class="bi-table"></span>
+          </button>
+          <div
+            contenteditable="plaintext-only"
+            class="px-3 py-2 fs-3 text-truncate"
+            id="report-name"
+          ></div>
+        </div>
+
+        <div class="d-flex align-items-center">
+          <div
+            id="edit-button-wrapper"
+            class="d-flex align-items-center me-4 pb-1"
+          >
+            <label
+              class="form-check-label bi-pencil-fill fs-5 px-2 py-2"
+              for="editing"
+            ></label>
+            <div
+              class="form-check form-switch fs-4"
+              data-bs-toggle="tooltip"
+              title="Toggle between editing and viewing mode"
+              data-bs-placement="bottom"
+            >
+              <input class="form-check-input" type="checkbox" id="editing" />
+            </div>
+          </div>
+          <button
+            id="chart-button"
+            class="btn btn-byu fs-2 bi-pie-chart-fill text-white"
+            data-bs-toggle="tooltip"
+            title="Toggle the chart visibility"
+            data-bs-placement="bottom"
+          ></button>
+          <!-- <button
+            class="btn btn-byu fs-2 bi-plus-lg text-white"
+            id="comment-modal-button"
+            data-bs-toggle="tooltip"
+            title="Add new student comments to the data set"
+            data-bs-placement="bottom"
+          ></button> -->
+          <!-- <button
+            class="btn btn-byu fs-2 bi-download text-white"
+            role="download-button"
+            data-bs-toggle="tooltip"
+            title="Download the visible table as a .csv file"
+            data-bs-placement="bottom"
+          ></button> -->
+
+          <button
+            class="btn btn-byu fs-2 bi-x-lg text-white"
+            role="close-button"
+            data-bs-toggle="tooltip"
+            title="Return to the list of reports"
+            data-bs-placement="bottom"
+          ></button>
+        </div>
+      </div>
+
+      <!-- Main content -->
+
+      <!-- Active Filters UI -->
+      <div id="filter-list" class="p-2">
+        <h6 class="text-muted mb-1">Active Filters:</h6>
+        <div id="active-filters" class="d-flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Comment Table Container -->
+      <div id="comment-table-container" class="table-responsive p-3">
+        <!-- Summary box -->
+        <div
+          id="summary-box"
+          class="mx-3 mt-3 px-4 py-3 bg-light rounded border border-byu text-dark d-none"
+        >
+          <div class="fw-bold text-byu mb-2 fs-5">
+            Summary of Student Feedback
+          </div>
+          <div id="summary-text" class="small">...</div>
+        </div>
+        <br />
+        <table class="table table-striped">
+          <thead id="comment-table-header">
+            <tr>
+              <th>Comments</th>
+              <th></th>
+              <th></th>
+              <th></th>
+              <th>Themes</th>
+            </tr>
+          </thead>
+          <tbody id="comment-table-body">
+            <!-- Comments will be injected here by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Sentiment Slider (hidden) -->
+      <div class="p-3 d-none">
+        <label for="sentiment-slider" class="form-label d-none"
+          >Sentiment Filter</label
+        >
+        <input id="sentiment-slider" type="text" />
+      </div>
+
+      <!-- Chart Sidebar -->
+      <div id="main-right-wrapper" class="collapsed-sidebar">
+        <div id="main-right" class="sidebar-content">
+          <!-- Chart Area (right below navbar) -->
+          <div
+            id="theme-chart-box"
+            class="p-4 bg-light border-top border-bottom"
+          >
+            <div class="fw-bold text-secondary mb-2 fs-6">
+              Themes by Total Mentions
+            </div>
+            <canvas id="theme-bar-chart" height="300"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="bg-byu text-white text-center py-2" id="footer">
+        <span class="opacity-75">&copy; 2025 Marriott AI Team</span>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/styles/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/bootstrap-slider.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script type="module">
+      import { Report } from "/js/report.mjs";
+      import { Comment } from "/js/comment.mjs";
+
+      try {
+        const report = new Report();
+        const reportId = window.location.pathname.split("/").pop();
+        await report.Get(reportId);
+        await report.Render();
+        report.table_container.classList.remove("d-none");
+
+        const tooltipTriggerList = document.querySelectorAll(
+          '[data-bs-toggle="tooltip"]'
+        );
+        const tooltipList = [...tooltipTriggerList].map(
+          (tooltipTriggerEl) =>
+            new bootstrap.Tooltip(tooltipTriggerEl, {
+              delay: { show: 500, hide: 100 },
+            })
+        );
+
+        document.getElementById("report-spinner").remove();
+      } catch (error) {
+        console.error("Error loading report:", error);
+      }
+
+      document
+        .querySelectorAll('[role="close-button"]')
+        .forEach(function (button) {
+          button.addEventListener("click", function () {
+            window.location = "/report/list";
+          });
+        });
+    </script>
+  </body>
+</html>

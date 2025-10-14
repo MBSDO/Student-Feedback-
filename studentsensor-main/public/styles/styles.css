@@ -1,0 +1,416 @@
+:root {
+  --text-genai-1: #da0c8d;
+  --text-genai-2: #b414c2;
+  --text-genai-3: #8d2bb5;
+  --bg-genai-1: #da0c8d;
+  --bg-genai-1-hover: #ed139d;
+  --bg-genai-2: #b414c2;
+  --bg-genai-2-hover: #c31dd3;
+  --bg-genai-3: #8d2bb5;
+  --bg-genai-3-hover: #9c34c5;
+  --byu: #002e5d;
+  --byu-dark: #001e3d;
+  --byu-secondary: #0047ba;
+  --byu-secondary-dark: #002c79;
+  --byu-burgundy: #9e2a2b;
+  --byu-burgundy-dark: #561516;
+  --byu-eggplant: #72246c;
+  --byu-eggplant-dark: #4b1a4c;
+  --byu-plum: #a73a64;
+  --byu-plum-dark: #6d2541;
+}
+@font-face {
+  font-family: "DancingScript";
+  src: url("../../styles/fonts/DancingScript-VariableFont_wght.ttf");
+}
+
+.bg-byu {
+  background-color: var(--byu);
+}
+.bg-byu-dark {
+  background-color: var(--byu-dark);
+}
+.text-byu {
+  color: var(--byu);
+}
+.btn-byu {
+  background-color: var(--byu);
+  color: white;
+}
+.spinner-lg {
+  width: 5rem;
+  height: 5rem;
+  border-width: 0.5em;
+}
+.spinner-xl {
+  width: 10rem;
+  height: 10rem;
+  border-width: 1em;
+}
+.btn-byu:active,
+.btn-byu.active,
+.btn-byu:hover {
+  background-color: var(--byu-dark);
+  color: white;
+  border-color: var(--byu-dark);
+}
+.btn-byu-secondary {
+  background-color: var(--byu-secondary);
+  color: white;
+}
+.btn-byu-secondary:active,
+.btn-byu-secondary.active,
+.btn-byu-secondary:hover,
+.btn-byu-secondary:focus {
+  background-color: var(--byu-secondary-dark);
+  color: white;
+}
+.btn-byu-burgundy {
+  background-color: var(--byu-burgundy);
+  color: white;
+}
+.btn-byu-burgundy:active,
+.btn-byu-burgundy.active,
+.btn-byu-burgundy:hover,
+.btn-byu-burgundy:focus {
+  background-color: var(--byu-burgundy-dark);
+  color: white;
+}
+.btn-byu-eggplant {
+  background-color: var(--byu-eggplant);
+  color: white;
+}
+.btn-byu-eggplant:active,
+.btn-byu-eggplant.active,
+.btn-byu-eggplant:hover,
+.btn-byu-eggplant:focus {
+  background-color: var(--byu-eggplant-dark);
+  color: white;
+}
+.form-check-input:checked {
+  background-color: var(--byu-plum);
+  border-color: var(--byu-plum-dark);
+}
+.bg-byu-secondary {
+  background-color: var(--byu-secondary);
+}
+.bg-byu-secondary-dark {
+  background-color: var(--byu-secondary-dark);
+}
+.bg-byu-burgundy {
+  background-color: var(--byu-burgundy);
+}
+.bg-byu-eggplant {
+  background-color: var(--byu-eggplant);
+}
+.bg-byu-plum {
+  background-color: var(--byu-plum);
+}
+.border-byu-plum {
+  border-color: var(--byu-plum) !important;
+}
+.text-byu-secondary {
+  color: var(--byu-secondary);
+}
+.text-byu-burgundy {
+  color: var(--byu-burgundy);
+}
+.text-byu-burgundy-dark {
+  color: var(--byu-burgundy-dark);
+}
+.text-byu-plum {
+  color: var(--byu-plum);
+}
+
+.border-byu {
+  border-color: var(--byu);
+}
+.border-byu-secondary {
+  border-color: var(--byu-secondary) !important;
+}
+.border-byu-secondary-dark {
+  border-color: var(--byu-secondary-dark) !important;
+}
+.table-byu {
+  border-color: var(--byu);
+  thead {
+    th {
+      background-color: var(--byu-secondary);
+      color: white;
+      padding: 0.8rem 1rem;
+    }
+  }
+  tbody tr {
+    border-color: #d1d3e2;
+  }
+  td {
+    vertical-align: middle;
+    border-color: #d1d3e2;
+  }
+  tbody tr td:first-child {
+    padding: 0.8rem 1rem;
+  }
+  button {
+    font-size: 0.9rem;
+    padding: 0.2rem 0.8rem;
+  }
+}
+#active-filters {
+  button {
+    font-size: 0.9rem;
+    padding: 0.2rem 0.8rem;
+  }
+}
+.modal-byu {
+  .modal-header {
+    background-color: var(--byu-secondary);
+    color: white;
+  }
+}
+#footer {
+  font-size: 10px;
+}
+
+#sentiment-slider-container .slider-track-high {
+  background: var(--byu-secondary);
+}
+#sentiment-slider-container .max-slider-handle {
+  background: var(--byu);
+  background-image: linear-gradient(
+    to bottom,
+    var(--byu-secondary),
+    var(--byu-secondary-dark)
+  );
+}
+#sentiment-slider-container .min-slider-handle {
+  background: var(--byu-burgundy);
+  background-image: linear-gradient(
+    to bottom,
+    var(--byu-burgundy),
+    var(--byu-burgundy-dark)
+  );
+}
+
+#sentiment-slider-container .slider-track-low {
+  background: var(--byu-burgundy);
+}
+
+#sentiment-slider-container .slider-selection {
+  background: silver;
+}
+
+[role="preview-area"] div {
+  border: 1px solid #d1d3e2;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.heading-prefix {
+  border-radius: 100%;
+  background-color: #b414c2;
+  color: white;
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+  /* Center horizontally */
+  line-height: 1.5em;
+  margin-right: 0.4em;
+}
+
+.button-prefix {
+  border-radius: 100%;
+  background-color: #b414c2;
+  color: white;
+  display: inline-block;
+  width: 1.5em;
+  text-align: center;
+  /* Center horizontally */
+  line-height: 1.5em;
+  margin-right: 0.4em;
+}
+
+.text-genai-1 {
+  color: var(--text-genai-1);
+}
+
+.text-genai-2 {
+  color: var(--text-genai-2);
+}
+
+.text-genai-3 {
+  color: var(--text-genai-3);
+}
+.bg-genai-1 {
+  background-color: var(--bg-genai-1);
+}
+
+.bg-genai-2 {
+  background-color: var(--bg-genai-2);
+}
+
+.bg-genai-3 {
+  background-color: var(--bg-genai-3);
+}
+
+.btn-genai-1 {
+  background-color: var(--bg-genai-1);
+  color: white;
+}
+
+.btn-genai-1:active,
+.btn-genai-1.active,
+.btn-genai-1:hover,
+.btn-genai-1:focus {
+  background-color: var(--bg-genai-1-hover);
+  color: white;
+}
+
+.btn-genai-2 {
+  background-color: var(--bg-genai-2);
+  color: white;
+}
+
+.btn-genai-2:active,
+.btn-genai-2.active,
+.btn-genai-2:focus,
+.btn-genai-2:hover {
+  background-color: var(--bg-genai-2-hover);
+  color: white;
+}
+
+.btn-genai-3 {
+  background-color: var(--bg-genai-3);
+  color: white;
+}
+
+.btn-genai-3:active,
+.btn-genai-3.active,
+.btn-genai-3:focus,
+.btn-genai-3:hover {
+  background-color: var(--bg-genai-3-hover);
+  color: white;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.flip-x {
+  transform: scaleX(-1);
+}
+
+@keyframes floatAnimation {
+  0% {
+    transform: translate(0, 0) translateY(10px);
+  }
+
+  50% {
+    transform: translate(0, 0) translateY(-10px);
+  }
+
+  100% {
+    transform: translate(0, 0) translateY(10px);
+  }
+}
+
+@keyframes floatShadowAnimation {
+  0% {
+    transform: translate(0, 0) scale(1.1);
+  }
+
+  50% {
+    transform: translate(0, 0) scale(0.9);
+  }
+
+  100% {
+    transform: translate(0, 0) scale(1.1);
+  }
+}
+
+@keyframes cursorAnimation {
+  0% {
+    opacity: 0.8;
+  }
+
+  40% {
+    opacity: 0.2;
+  }
+
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.8;
+  }
+}
+
+.fake-cursor {
+  animation: cursorAnimation 2s infinite;
+  background-color: var(--bs-teal);
+  width: 0.6em;
+  height: 1.2em;
+  line-height: 1.2em;
+  vertical-align: text-bottom;
+  display: inline-block;
+}
+
+.floating {
+  transform: translate(0, 0);
+  animation: floatAnimation 3s ease-in-out infinite;
+}
+
+.floating-shadow {
+  transform: translate(0, 0);
+  animation: floatShadowAnimation 3s ease-in-out infinite;
+}
+textarea {
+  resize: none;
+}
+.inner-shadow {
+  width: 100%;
+  min-height: 100px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border: solid rgba(0, 0, 0, 0.15);
+  border-width: 1px 0;
+  box-shadow: inset 0 0.5em 1.5em rgba(0, 0, 0, 0.1),
+    inset 0 0.125em 0.5em rgba(0, 0, 0, 0.15);
+}
+.letterGrade {
+  font-family: DancingScript;
+  margin-top: -1em;
+  margin-bottom: -1em;
+  color: #ea4242;
+  margin-right: 20px;
+  margin-left: 20px;
+  font-weight: bolder;
+}
+.text-genai-3-gradient {
+  background-image: linear-gradient(to bottom, #8d2bb5, #270b32);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; /* For Safari */
+  background-clip: text;
+  color: transparent;
+}
+[data-genai-user-content] {
+  display: none !important;
+}
+
+#main-right-wrapper {
+  position: fixed;
+  top: 64px; /* or whatever the navbar height is */
+  right: 0;
+  height: calc(100% - 64px);
+  display: flex;
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
+}
+#main-right-wrapper.collapsed-sidebar {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+#main-right-wrapper.collapsed-sidebar .sidebar-content {
+  pointer-events: auto;
+}

@@ -1,0 +1,26 @@
+{
+  "name": "studentsensor-main",
+  "version": "1.0.0",
+  "description": "This repository contains a single tool: (1) the StudentSensor app (or web interface).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "bootstrap": "^5.3.7",
+    "bootstrap-slider": "^11.0.2",
+    "csv-parse": "^6.1.0",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-list-endpoints": "^7.1.1",
+    "express-session": "^1.18.2",
+    "jquery": "^3.7.1",
+    "pg": "^8.16.3",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.3"
+  }
+}

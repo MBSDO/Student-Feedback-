@@ -15,6 +15,8 @@ import { db, checkPythonDependencies } from "./custom_node_modules/db.mjs"; // n
 import pg from "pg";
 import connectPgSimple from "connect-pg-simple";
 
+const isProd = process.env.NODE_ENV === "production";
+
 // Determine __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,27 +44,26 @@ const pgPool = new pg.Pool({
       : false,
 });
 
-
 // Session config
 app.use(
   session({
     store: new PgSession({
       pool: pgPool,
-      tableName: "session", // default is "session"
+      tableName: "session",
       createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || "development_secret",
     resave: false,
     saveUninitialized: false,
+    proxy: isProd, // ✅ helps behind Render proxy
     cookie: {
-      secure: true,      // HTTPS on Render
-      sameSite: "lax",   // good for OAuth redirects
+      secure: isProd, // ✅ false on localhost, true on Render
+      sameSite: "lax",
       httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     },
-  })
+  }),
 );
-
 
 // Middleware
 app.use(express.static(resolve(__dirname, "public")));

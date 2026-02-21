@@ -24,7 +24,18 @@ export class ReportList {
       });
     });
 
-    this.reports = await API("/report/list/data", {}, "GET");
+    try {
+      this.reports = await API("/report/list/data", {}, "GET");
+    } catch (error) {
+      document.getElementById("report-list-spinner").classList.add("d-none");
+      document.getElementById("report-list").innerHTML = `
+        <div class="text-danger text-center py-5">
+          Unable to load reports right now.<br/>
+          ${escapeHtml(error?.message || "Please try again in a moment.")}
+        </div>
+      `;
+      return;
+    }
 
     document.getElementById("report-list-spinner").classList.add("d-none");
 

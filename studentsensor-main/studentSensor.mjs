@@ -97,7 +97,9 @@ app.use(securityHeaders);
 
 // Rate limiting (stricter for API endpoints)
 app.use("/report/upload", rateLimit(10, 15 * 60 * 1000)); // 10 uploads per 15 minutes
-app.use("/report", rateLimit(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+app.use("/report/progress", rateLimit(2000, 15 * 60 * 1000)); // high-frequency polling
+app.use("/report/openai/status", rateLimit(600, 15 * 60 * 1000)); // status polling
+app.use("/report", rateLimit(1200, 15 * 60 * 1000)); // normal report traffic
 app.use("/comment", rateLimit(200, 15 * 60 * 1000)); // 200 requests per 15 minutes
 
 // Middleware

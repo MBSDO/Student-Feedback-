@@ -26,6 +26,12 @@ const commentLog = (level, event, data = {}) => {
   }
 };
 
+const splitToArray = (value) =>
+  String(value ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
 export class Comment {
   constructor(report) {
     this.report = report;
@@ -174,10 +180,7 @@ export class Comment {
       this.aims_array = [];
       return;
     }
-    this.aims_array = this.aims
-      .split(",")
-      .map((aim) => aim.trim())
-      .filter((aim) => aim !== "");
+    this.aims_array = splitToArray(this.aims);
   }
 
   AimsHTML() {
@@ -200,10 +203,7 @@ export class Comment {
       this.themes_array = [];
       return;
     }
-    this.themes_array = this.themes
-      .split(",")
-      .map((theme) => theme.trim())
-      .filter((theme) => theme !== "");
+    this.themes_array = splitToArray(this.themes);
   }
   CategoriesHTML() {
     const selector = '[role="categories"]';
@@ -244,10 +244,7 @@ export class Comment {
       this.subject_array = [];
       return;
     }
-    this.subject_array = this.subject
-      .split(",")
-      .map((subject) => subject.trim())
-      .filter((subject) => subject !== "");
+    this.subject_array = splitToArray(this.subject);
   }
 
   SetCategoriesArray() {
@@ -259,18 +256,28 @@ export class Comment {
     try {
       // Try to parse as JSON first
       if (typeof this.categories === 'string') {
-        this.categories = JSON.parse(this.categories);
+        const parsed = JSON.parse(this.categories);
+        if (Array.isArray(parsed)) {
+          this.categories = parsed;
+        } else if (typeof parsed === "string") {
+          this.categories = splitToArray(parsed);
+        } else {
+          this.categories = splitToArray(parsed);
+        }
       } else if (Array.isArray(this.categories)) {
         // Already an array, no need to parse
+        this.categories = this.categories
+          .map((category) => String(category ?? "").trim())
+          .filter((category) => category !== "");
         return;
       } else {
         // Fallback: try comma-separated string
-        this.categories = this.categories.split(",").map((c) => c.trim()).filter((c) => c !== "");
+        this.categories = splitToArray(this.categories);
       }
     } catch (err) {
       console.warn(`⚠️ Failed to parse categories for comment ${this.cid}:`, err.message);
       // Fallback: try comma-separated string
-      this.categories = this.categories.split(",").map((c) => c.trim()).filter((c) => c !== "");
+      this.categories = splitToArray(this.categories);
     }
   }
 

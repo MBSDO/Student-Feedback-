@@ -79,6 +79,8 @@ const triggerConfetti = () => {
   }
 };
 
+const CONFETTI_DURATION_MS = 2600;
+
 function updateOpenAIStatusIndicator(statusData, fetchError = null) {
   const indicator = document.getElementById("openai-status-indicator");
   const label = document.getElementById("openai-status-text");
@@ -557,7 +559,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         
         // Continue polling if not complete
         if (currentPercent < 100) {
-          pollingIntervalId = setTimeout(pollProgress, 500); // Poll every 500ms
+          pollingIntervalId = setTimeout(pollProgress, 1200); // Poll every 1.2s
         } else {
           browserLog("info", "poll_complete", {
             client_trace_id: clientTraceId,
@@ -580,12 +582,13 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           // Trigger confetti
           setTimeout(() => {
             triggerConfetti();
-          }, 300);
+          }, 150);
 
           status.innerText = "✅ Upload and processing complete! Opening report...";
           setTimeout(() => {
-            window.location.assign(`/report/${reportId}`);
-          }, 1400);
+            const nextUrl = `/report/${reportId}?fresh=${Date.now()}`;
+            window.location.assign(nextUrl);
+          }, CONFETTI_DURATION_MS);
         }
       } catch (error) {
         browserLog("error", "poll_exception", {

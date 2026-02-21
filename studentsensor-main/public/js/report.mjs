@@ -190,7 +190,7 @@ export class Report {
         this.DownloadTableAsCSV.bind(this)
       );
     }
-    setTimeout(() => this.ProcessComments(), 100);
+    // Upload pipeline processes comments server-side; avoid re-processing on page load.
   }
 
   ActivateFilter(filter_button, field, value) {

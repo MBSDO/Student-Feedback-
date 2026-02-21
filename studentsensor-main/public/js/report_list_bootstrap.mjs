@@ -30,6 +30,24 @@ const browserLog = (level, event, data = {}) => {
 
 const OPENAI_STATUS_POLL_MS = 20000;
 let openAIStatusIntervalId = null;
+let lastOpenAIPollAt = 0;
+
+const triggerConfetti = () => {
+  try {
+    if (typeof confetti !== "function") return;
+    confetti({
+      particleCount: 110,
+      spread: 70,
+      origin: { y: 0.65 },
+      disableForReducedMotion: true,
+      useWorker: false,
+    });
+  } catch (error) {
+    browserLog("warn", "confetti_blocked", {
+      message: error?.message || "Confetti unavailable",
+    });
+  }
+};
 
 function updateOpenAIStatusIndicator(statusData, fetchError = null) {
   const indicator = document.getElementById("openai-status-indicator");
@@ -67,7 +85,7 @@ function updateOpenAIStatusIndicator(statusData, fetchError = null) {
   if (statusData?.code === "model_unavailable") {
     indicator.classList.add("openai-status-unknown");
     label.textContent = "OpenAI: Model Unavailable";
-    indicator.title = statusData.detail || "Configured model is unavailable";
+    indicator.title = `${statusData.detail || "Configured model is unavailable"}${statusData?.provider_error ? ` • ${statusData.provider_error}` : ""}`;
     return;
   }
 
@@ -80,10 +98,16 @@ function updateOpenAIStatusIndicator(statusData, fetchError = null) {
 
   indicator.classList.add("openai-status-down");
   label.textContent = "OpenAI: Offline";
-  indicator.title = statusData?.detail || "OpenAI unavailable";
+  indicator.title = `${statusData?.detail || "OpenAI unavailable"}${statusData?.provider_error ? ` • ${statusData.provider_error}` : ""}`;
 }
 
 async function pollOpenAIStatus() {
+  const now = Date.now();
+  if (now - lastOpenAIPollAt < 2500) {
+    return;
+  }
+  lastOpenAIPollAt = now;
+
   try {
     const response = await fetch("/report/openai/status", {
       method: "GET",
@@ -101,6 +125,7 @@ async function pollOpenAIStatus() {
       latency_ms: data?.latency_ms ?? null,
       code: data?.code || null,
       detail: data?.detail || null,
+      provider_error: data?.provider_error || null,
     });
   } catch (error) {
     const message = error?.message || "status fetch failed";
@@ -500,9 +525,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           
           // Trigger confetti
           setTimeout(() => {
-            if (typeof confetti === 'function') {
-              confetti();
-            }
+            triggerConfetti();
           }, 300);
           
           // Reload page after a short delay

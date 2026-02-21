@@ -40,6 +40,8 @@ export class Report {
     this.slider_element = document.getElementById("sentiment-slider");
     this.download_button = document.querySelector('[role="download-button"]');
     this.clear_all_button = document.getElementById("clear-all-button");
+    this.processing_halted = false;
+    this.processing_halt_reason = null;
   }
 
   async Get(rid) {
@@ -381,6 +383,13 @@ export class Report {
   }
 
   ProcessComments() {
+    if (this.processing_halted) {
+      console.warn(
+        "⚠️ Comment processing halted:",
+        this.processing_halt_reason || "Unknown reason"
+      );
+      return;
+    }
     this.nullSentimentCount = this.comments.filter(
       (comment) => comment.sentiment === null
     ).length;
@@ -403,6 +412,18 @@ export class Report {
         this.ApplyActiveFilters();
       } catch (error) {
         comment.processing_failed = true;
+        const errorMessage = error?.message || String(error || "");
+        if (errorMessage.includes("Incorrect API key provided")) {
+          this.processing_halted = true;
+          this.processing_halt_reason =
+            "OpenAI API key is invalid in server environment.";
+          this.processing = false;
+          this.SetProgress(1);
+          console.error(
+            "❌ Halting processing: invalid OpenAI API key configured on server."
+          );
+          return;
+        }
         console.error(
           `Failed to process comment ${comment.cid}. Skipping and continuing.`,
           error

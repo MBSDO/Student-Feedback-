@@ -17,6 +17,11 @@ export class SentimentChart {
   }
 
   Render() {
+    if (!this.container) {
+      console.warn("⚠️ Sentiment chart container not found.");
+      this.status = false;
+      return false;
+    }
     const div = document.createElement("div");
     div.classList.add("p-2");
     this.container.appendChild(div);
@@ -43,15 +48,18 @@ export class SentimentChart {
         },
       },
     });
-    document
-      .getElementById("positive-count-label")
-      .appendChild(
+    const positiveLabel = document.getElementById("positive-count-label");
+    const negativeLabel = document.getElementById("negative-count-label");
+    const neutralLabel = document.getElementById("neutral-count-label");
+
+    if (positiveLabel) {
+      positiveLabel.appendChild(
         new FilterButton(this.report, "sentiment_text", "Positive", "text-byu")
           .dom
       );
-    document
-      .getElementById("negative-count-label")
-      .appendChild(
+    }
+    if (negativeLabel) {
+      negativeLabel.appendChild(
         new FilterButton(
           this.report,
           "sentiment_text",
@@ -59,14 +67,14 @@ export class SentimentChart {
           "text-byu-burgundy-dark"
         ).dom
       );
-    document
-      .getElementById("neutral-count-label")
-      .appendChild(
+    }
+    if (neutralLabel) {
+      neutralLabel.appendChild(
         new FilterButton(this.report, "sentiment_text", "Neutral").dom
       );
-    this.container.classList.contains("d-none")
-      ? this.report.ToggleChartOff()
-      : this.report.ToggleChartOn();
+    }
+    this.status = true;
+    return true;
   }
   Init() {}
   async UpdateData() {
@@ -97,6 +105,9 @@ export class SentimentChart {
 
   async UpdateThemeTable() {
     return new Promise((resolve) => {
+      if (!this.theme_table || !this.total_count_display) {
+        return resolve(false);
+      }
       this.theme_table.innerHTML = "";
 
       let themes = {};
@@ -159,9 +170,12 @@ export class SentimentChart {
           c.sentiment_text === "Neutral" && !c.dom.classList.contains("d-none")
       ).length;
 
-      document.getElementById("positive-count").innerText = positiveCount;
-      document.getElementById("negative-count").innerText = negativeCount;
-      document.getElementById("neutral-count").innerText = neutralCount;
+      const positiveCountDom = document.getElementById("positive-count");
+      const negativeCountDom = document.getElementById("negative-count");
+      const neutralCountDom = document.getElementById("neutral-count");
+      if (positiveCountDom) positiveCountDom.innerText = positiveCount;
+      if (negativeCountDom) negativeCountDom.innerText = negativeCount;
+      if (neutralCountDom) neutralCountDom.innerText = neutralCount;
 
       resolve(true);
     });

@@ -175,6 +175,20 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     const pollProgress = async () => {
       try {
         const response = await fetch(`/report/progress/${reportId}`);
+        
+        if (!response.ok) {
+          // If response is not OK, try to get error message
+          let errorMessage = `Server error: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch {
+            // If JSON parsing fails, use status text
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+        
         const data = await response.json();
         
         const currentPercent = data.percent || 0;
@@ -206,9 +220,23 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           statusElement.innerHTML = statusText;
         }
         
+        // Check for error state
+        if (data.state === "error" || data.error) {
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML = `❌ Error: ${data.error || data.message || "Unknown error"}`;
+          }
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          progressBar.classList.add("bg-danger");
+          if (pollingIntervalId) {
+            clearTimeout(pollingIntervalId);
+          }
+          return;
+        }
+        
         // Update progress bar color based on state
         if (data.state) {
-          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success", "bg-danger");
           switch(data.state) {
             case "reading_file":
             case "saving_comments":
@@ -235,7 +263,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         
         // Continue polling if not complete
         if (currentPercent < 100) {
-          setTimeout(pollProgress, 500); // Poll every 500ms
+          pollingIntervalId = setTimeout(pollProgress, 500); // Poll every 500ms
         } else {
           // Complete! Ensure we're at 100%
           if (animationFrameId) {
@@ -263,8 +291,38 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         }
       } catch (error) {
         console.error("Error polling progress:", error);
-        // Continue polling even on error (might be temporary)
-        setTimeout(pollProgress, 1000);
+        errorCount++;
+        
+        // Check if we've exceeded max errors
+        if (errorCount >= MAX_ERRORS) {
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML = `❌ Failed to track progress after ${MAX_ERRORS} attempts. The upload may have completed. Please refresh the page.`;
+          }
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          progressBar.classList.add("bg-danger");
+          if (pollingIntervalId) {
+            clearTimeout(pollingIntervalId);
+          }
+          return;
+        }
+        
+        // Check if it's a network error or server error
+        if (error.message && (error.message.includes("fetch") || error.message.includes("Network"))) {
+          // Network error - show message but keep trying
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML = `⚠️ Connection issue (${errorCount}/${MAX_ERRORS}). Retrying...`;
+          }
+          pollingIntervalId = setTimeout(pollProgress, 2000); // Retry after 2 seconds
+        } else {
+          // Other error - might be server error
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML = `⚠️ Error: ${error.message || "Unknown error"} (${errorCount}/${MAX_ERRORS}). Retrying...`;
+          }
+          pollingIntervalId = setTimeout(pollProgress, 2000);
+        }
       }
     };
     

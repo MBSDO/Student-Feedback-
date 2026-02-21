@@ -37,17 +37,20 @@
             class="d-flex align-items-center me-4 pb-1"
           >
             <label
-              class="form-check-label bi-pencil-fill fs-5 px-2 py-2"
+              class="form-check-label bi-pencil-fill fs-5 px-2 py-2 text-white"
               for="editing"
+              style="cursor: pointer;"
+              title="Edit Mode"
             ></label>
             <div
               class="form-check form-switch fs-4"
               data-bs-toggle="tooltip"
-              title="Toggle between editing and viewing mode"
+              title="Toggle Edit Mode - Enable to edit reports"
               data-bs-placement="bottom"
             >
               <input class="form-check-input" type="checkbox" id="editing" />
             </div>
+            <span class="text-white small ms-2 d-none d-md-inline">Edit</span>
           </div>
           <button
             class="btn btn-byu fs-2 bi-plus-lg text-white"
@@ -56,12 +59,14 @@
             title="Create a new report"
           ></button>
           <a
-            class="btn btn-byu fs-2 bi-door-closed text-white"
+            class="btn btn-byu fs-2 bi-box-arrow-right text-white d-flex align-items-center"
             href="/logout"
             data-bs-toggle="tooltip"
-            title="Logout of the site"
+            title="Logout"
             data-bs-placement="bottom"
-          ></a>
+          >
+            <span class="d-none d-md-inline ms-2 small">Logout</span>
+          </a>
         </div>
       </div>
 

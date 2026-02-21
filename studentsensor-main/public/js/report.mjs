@@ -138,9 +138,11 @@ export class Report {
       console.warn("⚠️ chart_button (#chart-button) not found in DOM.");
     }
 
-    this.comment_modal_button.addEventListener("click", () => {
-      this.modal.modal.show();
-    });
+    if (this.comment_modal_button) {
+      this.comment_modal_button.addEventListener("click", () => {
+        this.modal.modal.show();
+      });
+    }
     if (this.slider) {
       this.slider.on("slideStop", () => {
         const values = this.slider.getValue();

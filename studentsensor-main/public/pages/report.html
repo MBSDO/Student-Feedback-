@@ -42,17 +42,20 @@
             class="d-flex align-items-center me-4 pb-1"
           >
             <label
-              class="form-check-label bi-pencil-fill fs-5 px-2 py-2"
+              class="form-check-label bi-pencil-fill fs-5 px-2 py-2 text-white"
               for="editing"
+              style="cursor: pointer;"
+              title="Edit Mode"
             ></label>
             <div
               class="form-check form-switch fs-4"
               data-bs-toggle="tooltip"
-              title="Toggle between editing and viewing mode"
+              title="Toggle Edit Mode - Enable to edit comments"
               data-bs-placement="bottom"
             >
               <input class="form-check-input" type="checkbox" id="editing" />
             </div>
+            <span class="text-white small ms-2 d-none d-md-inline">Edit</span>
           </div>
           <button
             id="chart-button"

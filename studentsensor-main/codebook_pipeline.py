@@ -18,7 +18,6 @@ load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-TEMPERATURE = float(os.getenv("OPENAI_TEMPERATURE", 0.2))
 MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", 300))
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
@@ -105,7 +104,6 @@ def summarize_with_openai(prompt):
                 {"role": "system", "content": "You are a helpful assistant that summarizes student feedback."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=TEMPERATURE,
             max_completion_tokens=max_for_summary
         )
         return response.choices[0].message.content.strip()
@@ -118,7 +116,6 @@ def summarize_with_openai(prompt):
                         {"role": "system", "content": "You are a helpful assistant that summarizes student feedback."},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=TEMPERATURE,
                     max_tokens=max_for_summary
                 )
                 return response.choices[0].message.content.strip()
@@ -246,7 +243,6 @@ def run_open_coding():
                 response = client.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=[{"role": "user", "content": full_prompt}],
-                    temperature=0.3
                 )
                 raw_response = response.choices[0].message.content.strip()
 

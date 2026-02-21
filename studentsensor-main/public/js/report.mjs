@@ -438,6 +438,20 @@ export class Report {
           );
           return;
         }
+        if (
+          errorMessage.includes("temperature") &&
+          errorMessage.includes("Only the default (1) value is supported")
+        ) {
+          this.processing_halted = true;
+          this.processing_halt_reason =
+            "Server OpenAI temperature parameter is incompatible with the current model.";
+          this.processing = false;
+          this.SetProgress(1);
+          console.error(
+            "❌ Halting processing: server must omit custom temperature for this model."
+          );
+          return;
+        }
         console.error(
           `Failed to process comment ${comment.cid}. Skipping and continuing.`,
           error

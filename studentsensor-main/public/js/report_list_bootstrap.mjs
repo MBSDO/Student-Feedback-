@@ -34,14 +34,44 @@ let lastOpenAIPollAt = 0;
 
 const triggerConfetti = () => {
   try {
-    if (typeof confetti !== "function") return;
-    confetti({
-      particleCount: 110,
-      spread: 70,
-      origin: { y: 0.65 },
-      disableForReducedMotion: true,
-      useWorker: false,
-    });
+    const count = 80;
+    const colors = ["#2563eb", "#16a34a", "#eab308", "#db2777", "#7c3aed"];
+    const root = document.body;
+    if (!root) return;
+
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement("span");
+      const size = 6 + Math.random() * 8;
+      const left = Math.random() * 100;
+      const duration = 1300 + Math.random() * 1100;
+      const drift = -80 + Math.random() * 160;
+      const rotate = -260 + Math.random() * 520;
+      const color = colors[Math.floor(Math.random() * colors.length)];
+
+      piece.style.position = "fixed";
+      piece.style.left = `${left}vw`;
+      piece.style.top = "-12px";
+      piece.style.width = `${size}px`;
+      piece.style.height = `${size * 0.7}px`;
+      piece.style.borderRadius = "2px";
+      piece.style.background = color;
+      piece.style.opacity = "0.95";
+      piece.style.pointerEvents = "none";
+      piece.style.zIndex = "2147483647";
+      piece.style.willChange = "transform, opacity";
+      piece.style.transition = `transform ${duration}ms linear, opacity ${duration}ms ease-out`;
+
+      root.appendChild(piece);
+
+      requestAnimationFrame(() => {
+        piece.style.transform = `translate(${drift}px, ${window.innerHeight + 40}px) rotate(${rotate}deg)`;
+        piece.style.opacity = "0";
+      });
+
+      setTimeout(() => {
+        piece.remove();
+      }, duration + 80);
+    }
   } catch (error) {
     browserLog("warn", "confetti_blocked", {
       message: error?.message || "Confetti unavailable",
@@ -551,9 +581,11 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           setTimeout(() => {
             triggerConfetti();
           }, 300);
-          
-          // Reload page after a short delay
-          status.innerText = "✅ Upload and processing complete! Refresh to view updated report list.";
+
+          status.innerText = "✅ Upload and processing complete! Opening report...";
+          setTimeout(() => {
+            window.location.assign(`/report/${reportId}`);
+          }, 1400);
         }
       } catch (error) {
         browserLog("error", "poll_exception", {

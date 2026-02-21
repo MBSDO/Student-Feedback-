@@ -441,13 +441,11 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     let animationFrameId = null;
     const MAX_ERRORS = 8;
     const MAX_POLL_SECONDS = 12 * 60;
-    const STALL_SECONDS = 90;
     let errorCount = 0;
     let pollingIntervalId = null;
     const pollStartedAt = Date.now();
     let lastEtaSeconds = null;
     let lastEtaUpdatedAt = pollStartedAt;
-    let lastProgressAt = pollStartedAt;
     let lastState = "";
 
     const formatDuration = (totalSeconds) => {
@@ -477,7 +475,6 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       try {
         const nowMs = Date.now();
         const elapsedSeconds = Math.floor((nowMs - pollStartedAt) / 1000);
-        const stalledSeconds = Math.floor((nowMs - lastProgressAt) / 1000);
 
         if (elapsedSeconds >= MAX_POLL_SECONDS) {
           browserLog("warn", "poll_timeout", {
@@ -490,29 +487,6 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           if (statusElement) {
             statusElement.innerHTML =
               "⚠️ Processing is taking longer than expected. You can close this modal and check report status from the list.";
-          }
-          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
-          progressBar.classList.add("bg-warning");
-          if (pollingIntervalId) {
-            clearTimeout(pollingIntervalId);
-          }
-          resetUploadUiState();
-          return;
-        }
-
-        if (stalledSeconds >= STALL_SECONDS && targetPercent < 100) {
-          browserLog("warn", "poll_stalled", {
-            client_trace_id: clientTraceId,
-            server_trace_id: serverTraceId,
-            report_id: reportId,
-            stalled_seconds: stalledSeconds,
-            state: lastState || null,
-            percent: targetPercent,
-          });
-          const statusElement = document.getElementById("upload-status");
-          if (statusElement) {
-            statusElement.innerHTML =
-              "⚠️ Upload appears stalled. You can close this modal and check the report list in a moment.";
           }
           progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
           progressBar.classList.add("bg-warning");
@@ -545,9 +519,6 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
 
         const currentPercent = data.percent || 0;
         const currentState = data.state || "";
-        if (currentPercent > targetPercent || (currentState && currentState !== lastState)) {
-          lastProgressAt = nowMs;
-        }
         lastState = currentState;
 
         if (typeof data.eta === "number" && data.eta > 0 && currentPercent < 100) {

@@ -572,8 +572,48 @@ textarea {
   white-space: nowrap;
 }
 
+.openai-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 0.78rem;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.openai-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.openai-status-live {
+  background: rgba(25, 135, 84, 0.28);
+  color: #baf5d1;
+}
+
+.openai-status-down {
+  background: rgba(220, 53, 69, 0.28);
+  color: #ffd1d6;
+}
+
+.openai-status-unknown {
+  background: rgba(255, 193, 7, 0.22);
+  color: #ffe9a8;
+}
+
 /* Chart responsive */
 @media (max-width: 768px) {
+  .openai-status-pill {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.45rem;
+  }
+
   #theme-chart-box {
     padding: 1rem !important;
   }

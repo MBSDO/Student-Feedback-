@@ -5,6 +5,111 @@ console.log("✅ report_list_bootstrap.mjs loaded");
 let isUploadInProgress = false;
 let activeXHR = null;
 
+const makeTraceId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const browserLog = (level, event, data = {}) => {
+  const payload = {
+    ts: new Date().toISOString(),
+    event,
+    ...data,
+  };
+  const prefix = "[upload]";
+  if (level === "error") {
+    console.error(prefix, payload);
+  } else if (level === "warn") {
+    console.warn(prefix, payload);
+  } else {
+    console.log(prefix, payload);
+  }
+};
+
+const OPENAI_STATUS_POLL_MS = 20000;
+let openAIStatusIntervalId = null;
+
+function updateOpenAIStatusIndicator(statusData, fetchError = null) {
+  const indicator = document.getElementById("openai-status-indicator");
+  const label = document.getElementById("openai-status-text");
+  if (!indicator || !label) return;
+
+  indicator.classList.remove(
+    "openai-status-live",
+    "openai-status-down",
+    "openai-status-unknown",
+  );
+
+  if (fetchError) {
+    indicator.classList.add("openai-status-down");
+    label.textContent = "OpenAI: Unreachable";
+    indicator.title = `OpenAI status check failed: ${fetchError}`;
+    return;
+  }
+
+  if (statusData?.live) {
+    indicator.classList.add("openai-status-live");
+    const latency = typeof statusData.latency_ms === "number" ? ` (${statusData.latency_ms}ms)` : "";
+    label.textContent = `OpenAI: Live${latency}`;
+    indicator.title = `${statusData.detail || "OpenAI available"} • Model: ${statusData.model || "unknown"}`;
+    return;
+  }
+
+  if (statusData?.configured === false) {
+    indicator.classList.add("openai-status-down");
+    label.textContent = "OpenAI: Not Configured";
+    indicator.title = statusData.detail || "OPENAI_API_KEY is missing";
+    return;
+  }
+
+  indicator.classList.add("openai-status-down");
+  label.textContent = "OpenAI: Offline";
+  indicator.title = statusData?.detail || "OpenAI unavailable";
+}
+
+async function pollOpenAIStatus() {
+  try {
+    const response = await fetch("/report/openai/status", {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    const data = await response.json();
+    updateOpenAIStatusIndicator(data);
+    browserLog("info", "openai_status_poll", {
+      live: data?.live ?? false,
+      connected: data?.connected ?? false,
+      configured: data?.configured ?? false,
+      latency_ms: data?.latency_ms ?? null,
+      code: data?.code || null,
+      detail: data?.detail || null,
+    });
+  } catch (error) {
+    const message = error?.message || "status fetch failed";
+    updateOpenAIStatusIndicator(null, message);
+    browserLog("error", "openai_status_poll_failed", {
+      message,
+    });
+  }
+}
+
+function startOpenAIStatusPolling() {
+  pollOpenAIStatus();
+  if (openAIStatusIntervalId) {
+    clearInterval(openAIStatusIntervalId);
+  }
+  openAIStatusIntervalId = setInterval(pollOpenAIStatus, OPENAI_STATUS_POLL_MS);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    pollOpenAIStatus();
+  });
+}
+
 new ReportList().Render();
 
 // Tooltip setup
@@ -17,6 +122,7 @@ const tooltipTriggerList = document.querySelectorAll(
       delay: { show: 500, hide: 100 },
     })
 );
+startOpenAIStatusPolling();
 
 // Upload modal logic with staged progress + simulated backend processing
 document.getElementById("upload-submit").addEventListener("click", async () => {
@@ -37,6 +143,8 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   const professor = professorInput.value.trim();
   const course = courseInput.value.trim();
   const semester = semesterInput.value.trim();
+  const clientTraceId = makeTraceId();
+  let serverTraceId = null;
 
   if (!file || !professor || !course || !semester) {
     alert("All fields are required. Please fill in all form fields.");
@@ -70,6 +178,15 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   status.innerText = "🟡 Uploading file...";
 
   try {
+    browserLog("info", "start", {
+      client_trace_id: clientTraceId,
+      file_name: file?.name || null,
+      file_size_bytes: file?.size || 0,
+      professor,
+      course,
+      semester,
+    });
+
     // Phase 1: Reading file
     status.innerText = "📖 Reading file...";
     progressBar.style.width = "2%";
@@ -84,8 +201,13 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       activeXHR = xhr;
       xhr.open("POST", "/report/upload");
       xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("X-Client-Trace-Id", clientTraceId);
 
       xhr.onabort = () => {
+        browserLog("warn", "xhr_aborted", {
+          client_trace_id: clientTraceId,
+          server_trace_id: serverTraceId,
+        });
         status.innerText = "⚠️ Upload canceled.";
         progressBar.classList.add("bg-danger");
         reject(new Error("Upload canceled"));
@@ -101,19 +223,48 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       };
 
       xhr.onload = () => {
+        serverTraceId = xhr.getResponseHeader("X-Upload-Trace-Id") || serverTraceId;
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             uploadResponse = JSON.parse(xhr.responseText);
+            serverTraceId = uploadResponse?.trace_id || serverTraceId;
+            browserLog("info", "xhr_success", {
+              client_trace_id: clientTraceId,
+              server_trace_id: serverTraceId,
+              status: xhr.status,
+              queued: uploadResponse?.queued || false,
+              cached: uploadResponse?.cached || false,
+              report_id: uploadResponse?.report?.rid || null,
+            });
             resolve(uploadResponse);
           } catch (e) {
+            browserLog("warn", "xhr_success_non_json", {
+              client_trace_id: clientTraceId,
+              server_trace_id: serverTraceId,
+              status: xhr.status,
+              response_text_preview: (xhr.responseText || "").slice(0, 400),
+            });
             resolve(null);
           }
         } else {
+          browserLog("error", "xhr_failure", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            status: xhr.status,
+            status_text: xhr.statusText,
+            response_text_preview: (xhr.responseText || "").slice(0, 400),
+          });
           reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
         }
       };
 
-      xhr.onerror = () => reject(new Error("Network error during upload"));
+      xhr.onerror = () => {
+        browserLog("error", "xhr_network_error", {
+          client_trace_id: clientTraceId,
+          server_trace_id: serverTraceId,
+        });
+        reject(new Error("Network error during upload"));
+      };
 
       const body = JSON.stringify({
         professor,
@@ -127,6 +278,13 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
 
     // Phase 3: Poll for real-time progress updates
     const reportId = uploadResponse?.report?.rid;
+    let lastLoggedPercent = -1;
+    let lastLoggedState = "";
+    browserLog("info", "polling_started", {
+      client_trace_id: clientTraceId,
+      server_trace_id: serverTraceId || uploadResponse?.trace_id || null,
+      report_id: reportId || null,
+    });
     if (!reportId) {
       // If cached, we're done
       if (uploadResponse?.cached) {
@@ -155,6 +313,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     let lastPercent = 3;
     let targetPercent = 3;
     let animationFrameId = null;
+    const MAX_ERRORS = 8;
+    let errorCount = 0;
+    let pollingIntervalId = null;
     
     // Smooth animation function
     const animateProgress = () => {
@@ -190,8 +351,28 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         }
         
         const data = await response.json();
+        if (data?.trace_id && !serverTraceId) {
+          serverTraceId = data.trace_id;
+        }
         
         const currentPercent = data.percent || 0;
+        if (
+          data.state !== lastLoggedState ||
+          Math.abs(currentPercent - lastLoggedPercent) >= 10 ||
+          currentPercent === 100
+        ) {
+          browserLog("info", "poll_update", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            report_id: reportId,
+            state: data.state || null,
+            percent: currentPercent,
+            eta: data.eta ?? null,
+            message: data.message || null,
+          });
+          lastLoggedState = data.state || "";
+          lastLoggedPercent = currentPercent;
+        }
         
         // Update target percent (don't go backwards)
         if (currentPercent > targetPercent) {
@@ -222,6 +403,13 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         
         // Check for error state
         if (data.state === "error" || data.error) {
+          browserLog("error", "poll_error_state", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            report_id: reportId,
+            state: data.state || null,
+            error: data.error || data.message || "Unknown error",
+          });
           const statusElement = document.getElementById("upload-status");
           if (statusElement) {
             statusElement.innerHTML = `❌ Error: ${data.error || data.message || "Unknown error"}`;
@@ -265,6 +453,11 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         if (currentPercent < 100) {
           pollingIntervalId = setTimeout(pollProgress, 500); // Poll every 500ms
         } else {
+          browserLog("info", "poll_complete", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            report_id: reportId,
+          });
           // Complete! Ensure we're at 100%
           if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
@@ -290,6 +483,12 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           }, 1800);
         }
       } catch (error) {
+        browserLog("error", "poll_exception", {
+          client_trace_id: clientTraceId,
+          server_trace_id: serverTraceId,
+          report_id: reportId,
+          message: error?.message || "Unknown polling error",
+        });
         console.error("Error polling progress:", error);
         errorCount++;
         
@@ -342,6 +541,12 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       window.location.reload();
     }, 1800);
   } catch (error) {
+    browserLog("error", "upload_failed", {
+      client_trace_id: clientTraceId,
+      server_trace_id: serverTraceId,
+      message: error?.message || "Unknown upload error",
+      stack: error?.stack || null,
+    });
     console.error(error);
     status.innerText = "❌ Upload failed. Please try again.";
     progressBar.classList.remove("bg-primary", "bg-warning");

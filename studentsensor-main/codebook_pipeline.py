@@ -17,20 +17,23 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+OPENAI_MODEL = (os.getenv("OPENAI_MODEL") or "").strip()
 MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", 300))
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-try:
-    enc = encoding_for_model(OPENAI_MODEL)
-except KeyError:
-    # Newer models may not be mapped yet by local tiktoken versions.
-    # cl100k_base is a safe tokenizer fallback for budgeting prompt size.
-    print(
-        f"⚠️ [WARNING] Unknown tokenizer mapping for model '{OPENAI_MODEL}'. Falling back to cl100k_base.",
-        file=sys.stderr,
-    )
+if OPENAI_MODEL:
+    try:
+        enc = encoding_for_model(OPENAI_MODEL)
+    except KeyError:
+        # Newer models may not be mapped yet by local tiktoken versions.
+        # cl100k_base is a safe tokenizer fallback for budgeting prompt size.
+        print(
+            f"⚠️ [WARNING] Unknown tokenizer mapping for model '{OPENAI_MODEL}'. Falling back to cl100k_base.",
+            file=sys.stderr,
+        )
+        enc = get_encoding("cl100k_base")
+else:
     enc = get_encoding("cl100k_base")
 max_prompt_tokens = 10000 # Don't remove (used in coding batch calls)
 max_for_summary = 500
@@ -97,6 +100,25 @@ def build_summary_prompt(top_themes, comments_by_theme):
     return prompt
 
 def summarize_with_openai(prompt):
+    def _extract_text(response_obj):
+        try:
+            msg = response_obj.choices[0].message
+            content = getattr(msg, "content", None)
+            if isinstance(content, str):
+                return content.strip()
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    text = getattr(part, "text", None)
+                    if isinstance(text, str):
+                        parts.append(text)
+                    elif isinstance(part, dict) and isinstance(part.get("text"), str):
+                        parts.append(part["text"])
+                return "".join(parts).strip()
+        except Exception:
+            return ""
+        return ""
+
     try:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -106,7 +128,10 @@ def summarize_with_openai(prompt):
             ],
             max_completion_tokens=max_for_summary
         )
-        return response.choices[0].message.content.strip()
+        text = _extract_text(response)
+        if text:
+            return text
+        raise ValueError("OpenAI returned empty summary output.")
     except Exception as e:
         if "max_completion_tokens" in str(e):
             try:
@@ -118,10 +143,39 @@ def summarize_with_openai(prompt):
                     ],
                     max_tokens=max_for_summary
                 )
-                return response.choices[0].message.content.strip()
+                text = _extract_text(response)
+                if text:
+                    return text
+                raise ValueError("OpenAI returned empty summary output.")
             except Exception as inner_error:
                 return f"Error summarizing with OpenAI: {str(inner_error)}"
         return f"Error summarizing with OpenAI: {str(e)}"
+
+def build_fallback_analysis(top_themes, comments_by_theme):
+    if not top_themes:
+        return "No themes were identified in the student feedback."
+
+    lines = [
+        "The feedback shows several recurring patterns across student comments."
+    ]
+    for theme, count in top_themes.items():
+        examples = comments_by_theme.get(theme, [])[:2]
+        snippet_parts = []
+        for raw in examples:
+            text = str(raw or "").strip().replace("\n", " ")
+            if text:
+                snippet_parts.append(f"\"{text[:140]}{'...' if len(text) > 140 else ''}\"")
+
+        lines.append(f"**{theme}**")
+        lines.append(
+            f"This theme appears {count} time{'s' if count != 1 else ''} and indicates a consistent student signal in this area."
+        )
+        if snippet_parts:
+            lines.append(f"Representative feedback included {', '.join(snippet_parts)}.")
+        else:
+            lines.append("Representative comments were limited, but the coded frequency suggests this area deserves attention.")
+
+    return "\n\n".join(lines)
 
 def extract_top_5(themes_summary):
     sorted_themes = sorted(themes_summary.items(), key=itemgetter(1), reverse=True)
@@ -130,6 +184,9 @@ def extract_top_5(themes_summary):
 def main():
     if len(sys.argv) < 2:
         print(json.dumps({"error": "Missing input file. Usage: python codebook_pipeline.py themes_summary.json"}))
+        return
+    if not OPENAI_MODEL:
+        print(json.dumps({"error": "OPENAI_MODEL is not configured."}))
         return
 
     input_path = sys.argv[1]
@@ -156,6 +213,9 @@ def main():
             prompt = build_summary_prompt(top_themes, comments_by_theme)
             print(f"🔍 [DEBUG] Generated prompt length: {len(prompt)} characters", file=sys.stderr)
             summary = summarize_with_openai(prompt)
+            if not summary or summary.startswith("Error summarizing with OpenAI:"):
+                print("⚠️ [WARNING] OpenAI summary failed/empty. Using deterministic analysis fallback.", file=sys.stderr)
+                summary = build_fallback_analysis(top_themes, comments_by_theme)
             print(f"🔍 [DEBUG] Generated summary length: {len(summary)} characters", file=sys.stderr)
 
         related_comments = {theme: comments_by_theme.get(theme, []) for theme in top_themes.keys()}
@@ -175,6 +235,9 @@ def main():
 
 def run_open_coding():
     try:
+        if not OPENAI_MODEL:
+            print("Error in open coding: OPENAI_MODEL is not configured.", file=sys.stderr)
+            return
 
         with open("standardized_codebook.json", "r", encoding="utf-8") as f:
             raw_codebook = json.load(f)

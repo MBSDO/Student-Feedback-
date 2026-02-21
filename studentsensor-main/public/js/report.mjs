@@ -100,18 +100,19 @@ export class Report {
     if (commentModalElement) {
       this.modal = new CommentModal(this, "comment-input-modal");
       if (this.comments.length === 0) this.modal.modal.show();
-    } else {
-      console.warn("⚠️ Comment modal (#comment-input-modal) not found in DOM.");
     }
 
-    this.sentiment_chart = new SentimentChart(
-      this,
-      "sentiment-chart",
-      "total-count",
-      "theme-table"
-    );
-    this.sentiment_chart.Render();
-    this.sentiment_chart.Init();
+    const sentimentContainer = document.getElementById("sentiment-chart");
+    if (sentimentContainer && typeof Chart !== "undefined") {
+      this.sentiment_chart = new SentimentChart(
+        this,
+        "sentiment-chart",
+        "total-count",
+        "theme-table"
+      );
+      this.sentiment_chart.Render();
+      this.sentiment_chart.Init();
+    }
 
     const mainRight = document.getElementById("main-right");
     if (mainRight) {
@@ -290,6 +291,7 @@ export class Report {
   }
 
   RenderThemeChart() {
+    if (typeof Chart === "undefined") return;
     const canvas = document.getElementById("theme-bar-chart");
     const box = document.getElementById("theme-chart-box");
     const sidebar = document.getElementById("main-right");

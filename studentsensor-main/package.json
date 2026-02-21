@@ -12,17 +12,17 @@
   "type": "module",
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "bootstrap": "^5.3.7",
+    "bootstrap": "^5.3.8",
     "bootstrap-slider": "^11.0.2",
     "connect-pg-simple": "^10.0.0",
     "csv-parse": "^6.1.0",
-    "dotenv": "^17.2.1",
-    "express": "^5.1.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "express-list-endpoints": "^7.1.1",
-    "express-session": "^1.18.2",
+    "express-session": "^1.19.0",
     "jquery": "^3.7.1",
-    "pg": "^8.16.3",
+    "pg": "^8.18.0",
     "uuid": "^11.1.0",
-    "ws": "^8.18.3"
+    "ws": "^8.19.0"
   }
 }

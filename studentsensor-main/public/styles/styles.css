@@ -297,6 +297,30 @@
   cursor: pointer;
 }
 
+.header-actions {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.header-user-greeting {
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.header-action-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.header-action-icon {
+  font-size: 1rem;
+}
+
+.header-logout-link {
+  font-size: 1rem;
+}
+
 .flip-x {
   transform: scaleX(-1);
 }

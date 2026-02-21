@@ -181,6 +181,24 @@ function startOpenAIStatusPolling() {
   });
 }
 
+async function loadWelcomeUser() {
+  const welcomeEl = document.getElementById("welcome-user");
+  if (!welcomeEl) return;
+  try {
+    const res = await fetch("/auth/google/me", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const name = typeof data?.name === "string" ? data.name.trim() : "";
+    if (!name) return;
+    welcomeEl.textContent = `Welcome, ${name}`;
+  } catch {
+    // Non-blocking personalization.
+  }
+}
+
 new ReportList().Render();
 
 // Tooltip setup
@@ -194,6 +212,7 @@ const tooltipTriggerList = document.querySelectorAll(
     })
 );
 startOpenAIStatusPolling();
+loadWelcomeUser();
 
 const uploadModalElement = document.getElementById("summary-upload-modal");
 

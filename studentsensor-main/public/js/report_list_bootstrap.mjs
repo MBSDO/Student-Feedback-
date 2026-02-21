@@ -163,6 +163,28 @@ const tooltipTriggerList = document.querySelectorAll(
 );
 startOpenAIStatusPolling();
 
+const uploadModalElement = document.getElementById("summary-upload-modal");
+
+const setUploadModalDismissEnabled = (enabled) => {
+  if (!uploadModalElement) return;
+  const closeButton = uploadModalElement.querySelector(".btn-close");
+  if (closeButton) {
+    closeButton.disabled = !enabled;
+  }
+};
+
+if (uploadModalElement) {
+  uploadModalElement.addEventListener("hide.bs.modal", (event) => {
+    if (!isUploadInProgress) return;
+    event.preventDefault();
+    const statusElement = document.getElementById("upload-status");
+    if (statusElement) {
+      statusElement.innerText =
+        "⏳ Upload in progress. Please wait for completion.";
+    }
+  });
+}
+
 // Upload modal logic with staged progress + simulated backend processing
 document.getElementById("upload-submit").addEventListener("click", async () => {
   if (isUploadInProgress) return; // Prevent duplicate submits
@@ -209,6 +231,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   const originalText = uploadBtn.textContent;
   uploadBtn.textContent = "Uploading...";
   let deferUiResetToPolling = false;
+  setUploadModalDismissEnabled(false);
 
   const resetUploadUiState = () => {
     fileInput.disabled =
@@ -220,6 +243,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     uploadBtn.textContent = originalText;
     isUploadInProgress = false;
     activeXHR = null;
+    setUploadModalDismissEnabled(true);
   };
 
   progressContainer.classList.remove("d-none");
@@ -579,10 +603,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     deferUiResetToPolling = true;
     pollProgress();
 
-    const modal = bootstrap.Modal.getInstance(
-      document.getElementById("summary-upload-modal")
-    );
-    modal?.hide();
+    // Keep modal open during upload so progress remains visible and responsive.
   } catch (error) {
     browserLog("error", "upload_failed", {
       client_trace_id: clientTraceId,

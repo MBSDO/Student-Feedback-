@@ -424,6 +424,20 @@ export class Report {
           );
           return;
         }
+        if (
+          errorMessage.includes("max_tokens") &&
+          errorMessage.includes("max_completion_tokens")
+        ) {
+          this.processing_halted = true;
+          this.processing_halt_reason =
+            "Server OpenAI parameter mismatch (max_tokens vs max_completion_tokens).";
+          this.processing = false;
+          this.SetProgress(1);
+          console.error(
+            "❌ Halting processing: server must use max_completion_tokens for this model."
+          );
+          return;
+        }
         console.error(
           `Failed to process comment ${comment.cid}. Skipping and continuing.`,
           error

@@ -106,10 +106,24 @@ def summarize_with_openai(prompt):
                 {"role": "user", "content": prompt}
             ],
             temperature=TEMPERATURE,
-            max_tokens=max_for_summary
+            max_completion_tokens=max_for_summary
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
+        if "max_completion_tokens" in str(e):
+            try:
+                response = client.chat.completions.create(
+                    model=OPENAI_MODEL,
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that summarizes student feedback."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=TEMPERATURE,
+                    max_tokens=max_for_summary
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as inner_error:
+                return f"Error summarizing with OpenAI: {str(inner_error)}"
         return f"Error summarizing with OpenAI: {str(e)}"
 
 def extract_top_5(themes_summary):

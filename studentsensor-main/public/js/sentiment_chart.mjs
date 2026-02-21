@@ -18,7 +18,9 @@ export class SentimentChart {
 
   Render() {
     if (!this.container) {
-      console.warn("⚠️ Sentiment chart container not found.");
+      if (typeof window !== "undefined" && window.__DEV_UI_WARNINGS === true) {
+        console.debug("Optional UI element missing: sentiment chart container");
+      }
       this.status = false;
       return false;
     }

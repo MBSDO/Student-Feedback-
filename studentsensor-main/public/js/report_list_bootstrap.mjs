@@ -440,8 +440,22 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     let targetPercent = 3;
     let animationFrameId = null;
     const MAX_ERRORS = 8;
+    const MAX_POLL_SECONDS = 12 * 60;
+    const STALL_SECONDS = 90;
     let errorCount = 0;
     let pollingIntervalId = null;
+    const pollStartedAt = Date.now();
+    let lastEtaSeconds = null;
+    let lastEtaUpdatedAt = pollStartedAt;
+    let lastProgressAt = pollStartedAt;
+    let lastState = "";
+
+    const formatDuration = (totalSeconds) => {
+      const safeSeconds = Math.max(0, Number(totalSeconds) || 0);
+      const minutes = Math.floor(safeSeconds / 60);
+      const seconds = safeSeconds % 60;
+      return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    };
     
     // Smooth animation function
     const animateProgress = () => {
@@ -461,6 +475,54 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     
     const pollProgress = async () => {
       try {
+        const nowMs = Date.now();
+        const elapsedSeconds = Math.floor((nowMs - pollStartedAt) / 1000);
+        const stalledSeconds = Math.floor((nowMs - lastProgressAt) / 1000);
+
+        if (elapsedSeconds >= MAX_POLL_SECONDS) {
+          browserLog("warn", "poll_timeout", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            report_id: reportId,
+            elapsed_seconds: elapsedSeconds,
+          });
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML =
+              "⚠️ Processing is taking longer than expected. You can close this modal and check report status from the list.";
+          }
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          progressBar.classList.add("bg-warning");
+          if (pollingIntervalId) {
+            clearTimeout(pollingIntervalId);
+          }
+          resetUploadUiState();
+          return;
+        }
+
+        if (stalledSeconds >= STALL_SECONDS && targetPercent < 100) {
+          browserLog("warn", "poll_stalled", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            report_id: reportId,
+            stalled_seconds: stalledSeconds,
+            state: lastState || null,
+            percent: targetPercent,
+          });
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML =
+              "⚠️ Upload appears stalled. You can close this modal and check the report list in a moment.";
+          }
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          progressBar.classList.add("bg-warning");
+          if (pollingIntervalId) {
+            clearTimeout(pollingIntervalId);
+          }
+          resetUploadUiState();
+          return;
+        }
+
         const response = await fetch(`/report/progress/${reportId}`);
         
         if (!response.ok) {
@@ -480,8 +542,30 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         if (data?.trace_id && !serverTraceId) {
           serverTraceId = data.trace_id;
         }
-        
+
         const currentPercent = data.percent || 0;
+        const currentState = data.state || "";
+        if (currentPercent > targetPercent || (currentState && currentState !== lastState)) {
+          lastProgressAt = nowMs;
+        }
+        lastState = currentState;
+
+        if (typeof data.eta === "number" && data.eta > 0 && currentPercent < 100) {
+          const incomingEta = Math.max(1, Math.round(data.eta));
+          if (lastEtaSeconds === null) {
+            lastEtaSeconds = incomingEta;
+            lastEtaUpdatedAt = nowMs;
+          } else {
+            const secondsSinceLastEta = Math.max(
+              0,
+              Math.floor((nowMs - lastEtaUpdatedAt) / 1000)
+            );
+            const decayedEta = Math.max(0, lastEtaSeconds - secondsSinceLastEta);
+            // Keep ETA monotonic so it behaves like time remaining.
+            lastEtaSeconds = Math.min(decayedEta, incomingEta);
+            lastEtaUpdatedAt = nowMs;
+          }
+        }
         if (
           data.state !== lastLoggedState ||
           Math.abs(currentPercent - lastLoggedPercent) >= 10 ||
@@ -511,14 +595,10 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         
         // Update status message with ETA
         let statusText = data.message || "Processing...";
-        if (data.eta !== null && data.eta > 0 && currentPercent < 100) {
-          const minutes = Math.floor(data.eta / 60);
-          const seconds = data.eta % 60;
-          if (minutes > 0) {
-            statusText += ` <span class="text-muted">• ETA: ${minutes}m ${seconds}s</span>`;
-          } else {
-            statusText += ` <span class="text-muted">• ETA: ${seconds}s</span>`;
-          }
+        if (lastEtaSeconds !== null && lastEtaSeconds > 0 && currentPercent < 100) {
+          statusText += ` <span class="text-muted">• Est. remaining: ${formatDuration(lastEtaSeconds)}</span>`;
+        } else if (currentPercent < 100) {
+          statusText += ` <span class="text-muted">• Elapsed: ${formatDuration(elapsedSeconds)}</span>`;
         }
         
         // Update status

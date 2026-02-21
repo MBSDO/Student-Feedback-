@@ -203,12 +203,31 @@ def run_open_coding():
         if report_id:
             print(f"🟢 Running open coding for report_id: {report_id}", file=sys.stderr)
             cursor.execute(
-                "SELECT cid, text FROM comments WHERE rid = %s AND text IS NOT NULL AND categories IS NULL;",
+                """
+                SELECT c.cid, c.text
+                FROM comments c
+                LEFT JOIN comments_settings cs
+                  ON cs.cid = c.cid
+                 AND cs.name = 'categories'
+                WHERE c.rid = %s
+                  AND c.text IS NOT NULL
+                  AND cs.cid IS NULL;
+                """,
                 (report_id,)
             )
         else:
             print("🟡 Running open coding for ALL comments (no report_id provided)", file=sys.stderr)
-            cursor.execute("SELECT cid, text FROM comments WHERE text IS NOT NULL AND categories IS NULL;")
+            cursor.execute(
+                """
+                SELECT c.cid, c.text
+                FROM comments c
+                LEFT JOIN comments_settings cs
+                  ON cs.cid = c.cid
+                 AND cs.name = 'categories'
+                WHERE c.text IS NOT NULL
+                  AND cs.cid IS NULL;
+                """
+            )
 
         rows = cursor.fetchall()
 
@@ -259,8 +278,13 @@ def run_open_coding():
                 ]
 
                 cursor.executemany(
-                    "UPDATE comments SET categories = %s WHERE cid = %s",
-                    updates
+                    """
+                    INSERT INTO comments_settings (cid, name, value)
+                    VALUES (%s, 'categories', %s)
+                    ON CONFLICT (cid, name) DO UPDATE
+                    SET value = EXCLUDED.value
+                    """,
+                    [(cid, categories_json) for categories_json, cid in updates]
                 )
                 conn.commit()
                 total_written += len(updates)

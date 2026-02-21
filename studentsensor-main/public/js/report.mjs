@@ -42,6 +42,8 @@ export class Report {
     this.clear_all_button = document.getElementById("clear-all-button");
     this.processing_halted = false;
     this.processing_halt_reason = null;
+    this.devUiWarnings =
+      typeof window !== "undefined" && window.__DEV_UI_WARNINGS === true;
   }
 
   async Get(rid) {
@@ -91,7 +93,9 @@ export class Report {
         value: [-3, 3],
       });
     } else {
-      console.warn("Slider element #sentiment-slider not found.");
+      if (this.devUiWarnings) {
+        console.debug("Optional UI element missing: #sentiment-slider");
+      }
     }
 
     this.Init();
@@ -129,7 +133,9 @@ export class Report {
     if (editToggle) {
       editToggle.addEventListener("change", ToggleEdit);
     } else {
-      console.warn("⚠️ Edit toggle (#editing) not found in DOM.");
+      if (this.devUiWarnings) {
+        console.debug("Optional UI element missing: #editing");
+      }
     }
 
     document.querySelectorAll('[role="download-button"]').forEach((button) => {
@@ -149,7 +155,9 @@ export class Report {
         this.ToggleChart();
       });
     } else {
-      console.warn("⚠️ chart_button (#chart-button) not found in DOM.");
+      if (this.devUiWarnings) {
+        console.debug("Optional UI element missing: #chart-button");
+      }
     }
 
     if (this.comment_modal_button) {

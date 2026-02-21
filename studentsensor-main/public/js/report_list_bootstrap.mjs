@@ -440,7 +440,8 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     let targetPercent = 3;
     let animationFrameId = null;
     const MAX_ERRORS = 8;
-    const MAX_POLL_SECONDS = 12 * 60;
+    const MAX_POLL_SECONDS = 60 * 60; // Absolute safety cap (1 hour)
+    const HEARTBEAT_STALE_SECONDS = 180;
     let errorCount = 0;
     let pollingIntervalId = null;
     const pollStartedAt = Date.now();
@@ -476,27 +477,6 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         const nowMs = Date.now();
         const elapsedSeconds = Math.floor((nowMs - pollStartedAt) / 1000);
 
-        if (elapsedSeconds >= MAX_POLL_SECONDS) {
-          browserLog("warn", "poll_timeout", {
-            client_trace_id: clientTraceId,
-            server_trace_id: serverTraceId,
-            report_id: reportId,
-            elapsed_seconds: elapsedSeconds,
-          });
-          const statusElement = document.getElementById("upload-status");
-          if (statusElement) {
-            statusElement.innerHTML =
-              "⚠️ Processing is taking longer than expected. You can close this modal and check report status from the list.";
-          }
-          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
-          progressBar.classList.add("bg-warning");
-          if (pollingIntervalId) {
-            clearTimeout(pollingIntervalId);
-          }
-          resetUploadUiState();
-          return;
-        }
-
         const response = await fetch(`/report/progress/${reportId}`);
         
         if (!response.ok) {
@@ -515,6 +495,35 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         const data = await response.json();
         if (data?.trace_id && !serverTraceId) {
           serverTraceId = data.trace_id;
+        }
+        const heartbeatAgeSeconds = Number(data?.heartbeat_age_seconds);
+        const heartbeatKnown = Number.isFinite(heartbeatAgeSeconds);
+        const heartbeatStale =
+          heartbeatKnown && heartbeatAgeSeconds > HEARTBEAT_STALE_SECONDS;
+
+        const shouldTimeout =
+          elapsedSeconds >= MAX_POLL_SECONDS && (!heartbeatKnown || heartbeatStale);
+
+        if (shouldTimeout) {
+          browserLog("warn", "poll_timeout", {
+            client_trace_id: clientTraceId,
+            server_trace_id: serverTraceId,
+            report_id: reportId,
+            elapsed_seconds: elapsedSeconds,
+            heartbeat_age_seconds: heartbeatAgeSeconds,
+          });
+          const statusElement = document.getElementById("upload-status");
+          if (statusElement) {
+            statusElement.innerHTML =
+              "⚠️ Upload appears stalled. You can close this modal and check the report list in a moment.";
+          }
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          progressBar.classList.add("bg-warning");
+          if (pollingIntervalId) {
+            clearTimeout(pollingIntervalId);
+          }
+          resetUploadUiState();
+          return;
         }
 
         const currentPercent = data.percent || 0;
@@ -570,6 +579,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           statusText += ` <span class="text-muted">• Est. remaining: ${formatDuration(lastEtaSeconds)}</span>`;
         } else if (currentPercent < 100) {
           statusText += ` <span class="text-muted">• Elapsed: ${formatDuration(elapsedSeconds)}</span>`;
+        }
+        if (currentPercent < 100 && heartbeatKnown) {
+          statusText += ` <span class="text-muted">• Heartbeat: ${formatDuration(heartbeatAgeSeconds)} ago</span>`;
         }
         
         // Update status

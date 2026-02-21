@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "bootstrap": "^5.3.7",
     "bootstrap-slider": "^11.0.2",
     "connect-pg-simple": "^10.0.0",

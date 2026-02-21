@@ -11,11 +11,31 @@ import { ReportRouter } from "./custom_node_modules/report.mjs";
 import { CommentRouter } from "./custom_node_modules/comment.mjs";
 
 import { db, checkPythonDependencies } from "./custom_node_modules/db.mjs"; // no startServer imported here
+import { securityHeaders, rateLimit } from "./custom_node_modules/security.mjs";
 
 import pg from "pg";
 import connectPgSimple from "connect-pg-simple";
 
 const isProd = process.env.NODE_ENV === "production";
+
+// Validate critical environment variables in production
+if (isProd) {
+  const requiredEnvVars = [
+    "SESSION_SECRET",
+    "DB_HOST",
+    "DB_NAME",
+    "DB_USER",
+    "DB_PW",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+  ];
+  
+  const missing = requiredEnvVars.filter((varName) => !process.env[varName]);
+  if (missing.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missing.join(", ")}`);
+    process.exit(1);
+  }
+}
 
 // Determine __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -39,10 +59,16 @@ const pgPool = new pg.Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PW,
   ssl:
-    String(process.env.DB_SSL).toLowerCase() === "true"
+    process.env.DB_SSL && String(process.env.DB_SSL).toLowerCase() === "true"
       ? { rejectUnauthorized: false }
       : false,
 });
+
+// Validate session secret
+if (isProd && !process.env.SESSION_SECRET) {
+  console.error("❌ SESSION_SECRET must be set in production!");
+  process.exit(1);
+}
 
 // Session config
 app.use(
@@ -52,10 +78,11 @@ app.use(
       tableName: "session",
       createTableIfMissing: true,
     }),
-    secret: process.env.SESSION_SECRET || "development_secret",
+    secret: process.env.SESSION_SECRET || (isProd ? null : "development_secret"),
     resave: false,
     saveUninitialized: false,
     proxy: isProd, // ✅ helps behind Render proxy
+    name: "sessionId", // Don't use default session name
     cookie: {
       secure: isProd, // ✅ false on localhost, true on Render
       sameSite: "lax",
@@ -65,10 +92,18 @@ app.use(
   }),
 );
 
+// Security headers middleware (apply to all routes)
+app.use(securityHeaders);
+
+// Rate limiting (stricter for API endpoints)
+app.use("/report/upload", rateLimit(10, 15 * 60 * 1000)); // 10 uploads per 15 minutes
+app.use("/report", rateLimit(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
+app.use("/comment", rateLimit(200, 15 * 60 * 1000)); // 200 requests per 15 minutes
+
 // Middleware
 app.use(express.static(resolve(__dirname, "public")));
-app.use(express.json({ limit: "100mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" })); // Reduced from 100mb for security
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Routers
 console.log("🔗 Registering routers...");

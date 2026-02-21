@@ -414,3 +414,181 @@ textarea {
 #main-right-wrapper.collapsed-sidebar .sidebar-content {
   pointer-events: auto;
 }
+
+/* Responsive Design Improvements */
+@media (max-width: 768px) {
+  /* Mobile header adjustments */
+  .fs-2 {
+    font-size: 1.25rem !important;
+  }
+  
+  .fs-3 {
+    font-size: 1.1rem !important;
+  }
+  
+  /* Header button spacing */
+  .d-flex.align-items-center > * {
+    margin-right: 0.25rem !important;
+  }
+  
+  /* Modal improvements */
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  .modal-content {
+    border-radius: 0.5rem;
+  }
+  
+  /* Table improvements for mobile */
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.5rem 0.25rem;
+    white-space: nowrap;
+  }
+  
+  /* Summary box mobile */
+  #summary-box {
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+    padding: 1rem !important;
+  }
+  
+  /* Filter list mobile */
+  #filter-list {
+    padding: 0.5rem !important;
+  }
+  
+  /* Chart sidebar - hide on mobile or make overlay */
+  #main-right-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Upload modal form fields */
+  .form-control {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Progress bar mobile */
+  .progress {
+    height: 1.5rem;
+  }
+  
+  /* Report list cards - single column on mobile */
+  .row-cols-md-2,
+  .row-cols-lg-3,
+  .row-cols-xl-4 {
+    --bs-columns: 1;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Extra small devices */
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  
+  /* Header text truncation */
+  .text-truncate {
+    max-width: 150px;
+  }
+  
+  /* Button sizes */
+  .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Modal full screen on very small devices */
+  .modal-dialog {
+    margin: 0;
+    max-width: 100%;
+    height: 100%;
+  }
+  
+  .modal-content {
+    height: 100%;
+    border-radius: 0;
+  }
+  
+  /* Table - stack on very small screens */
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Hide some table columns on mobile */
+  .table th:nth-child(3),
+  .table td:nth-child(3),
+  .table th:nth-child(4),
+  .table td:nth-child(4) {
+    display: none;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 577px) and (max-width: 991px) {
+  .row-cols-md-2 {
+    --bs-columns: 2;
+  }
+  
+  .row-cols-lg-3,
+  .row-cols-xl-4 {
+    --bs-columns: 2;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing for touch */
+  .d-flex.gap-2 > * {
+    margin: 0.25rem;
+  }
+}
+
+/* Utility classes for responsive design */
+.min-w-0 {
+  min-width: 0;
+}
+
+/* Fix for flexbox text truncation */
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Chart responsive */
+@media (max-width: 768px) {
+  #theme-chart-box {
+    padding: 1rem !important;
+  }
+  
+  #theme-bar-chart {
+    max-height: 250px;
+  }
+}
+
+/* Better error display */
+.alert {
+  word-wrap: break-word;
+}
+
+/* Loading states */
+.spinner-border {
+  display: inline-block;
+}

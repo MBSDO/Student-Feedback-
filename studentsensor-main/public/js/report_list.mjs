@@ -1,5 +1,6 @@
 import { API } from "/js/utilities.mjs";
 import { ReportListItem } from "/js/templates.mjs";
+import { escapeHtml } from "/js/security.mjs";
 
 export class ReportList {
   constructor() {
@@ -49,11 +50,12 @@ export class ReportList {
 
 function RenderRow(report) {
   report.date = new Date(report.updated).toLocaleDateString();
+  // Escape user-generated content to prevent XSS
   const rowHTML = ReportListItem(report)
-    .replace("{{name}}", report.name)
-    .replace("{{rid}}", report.rid)
-    .replace("{{date}}", report.date)
-    .replace("{{comments_count}}", report.comments_count || 0);
+    .replace("{{name}}", escapeHtml(report.name))
+    .replace("{{rid}}", escapeHtml(String(report.rid)))
+    .replace("{{date}}", escapeHtml(report.date))
+    .replace("{{comments_count}}", escapeHtml(String(report.comments_count || 0)));
   const rowElement = document.createElement("div");
   rowElement.innerHTML = rowHTML;
   rowElement

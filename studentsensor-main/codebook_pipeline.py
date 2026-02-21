@@ -257,4 +257,5 @@ def run_open_coding():
 if __name__ == "__main__":
     if len(sys.argv) >= 2:
         main()
-    run_open_coding()
+    else:
+        run_open_coding()

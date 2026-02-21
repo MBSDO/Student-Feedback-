@@ -23,15 +23,15 @@
       <div
         class="d-flex align-items-center justify-content-between bg-byu text-white shadow-sm"
       >
-        <div class="d-flex align-items-center">
-          <span class="fs-2 me-2 ms-0 ps-0 text-white ms-3" role="close-button"
+        <div class="d-flex align-items-center flex-grow-1 min-w-0">
+          <span class="fs-2 me-2 ms-0 ps-0 text-white ms-3 flex-shrink-0" role="close-button"
             ><span class="bi-table"></span
           ></span>
-          <div class="px-3 py-2 fs-3 text-truncate">
+          <div class="px-3 py-2 fs-3 text-truncate min-w-0">
             Student Rating Analysis
           </div>
         </div>
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center flex-shrink-0">
           <div
             id="edit-button-wrapper"
             class="d-flex align-items-center me-4 pb-1"
@@ -101,7 +101,7 @@
 
           <!-- Upload Modal -->
           <div class="modal" tabindex="-1" id="summary-upload-modal">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
               <div class="modal-content p-3">
                 <div class="modal-header">
                   <h5 class="modal-title">Upload CSV for Summary Report</h5>
@@ -112,26 +112,34 @@
                   ></button>
                 </div>
                 <div class="modal-body">
+                  <label for="upload-professor" class="form-label small">Professor Full Name</label>
                   <input
                     class="form-control mb-2"
                     id="upload-professor"
-                    placeholder="Professor Full Name (e.g., Jane Doe)"
+                    placeholder="e.g., Jane Doe"
+                    required
                   />
+                  <label for="upload-course" class="form-label small">Course Code</label>
                   <input
                     class="form-control mb-2"
                     id="upload-course"
-                    placeholder="Course Code (e.g., PSYCH 101-002)"
+                    placeholder="e.g., PSYCH 101-002"
+                    required
                   />
+                  <label for="upload-semester" class="form-label small">Semester</label>
                   <input
                     class="form-control mb-2"
                     id="upload-semester"
-                    placeholder="Semester (e.g., Fall 2025)"
+                    placeholder="e.g., Fall 2025"
+                    required
                   />
+                  <label for="upload-file" class="form-label small">CSV File</label>
                   <input
                     type="file"
                     class="form-control"
                     id="upload-file"
                     accept=".csv"
+                    required
                   />
 
                   <!-- Progress bar -->
@@ -150,12 +158,18 @@
                     ></div>
                   </div>
 
-                  <!-- Status label -->
+                  <!-- Status label with ETA -->
                   <div
                     id="upload-status"
                     class="text-center small text-secondary mt-2"
                   >
                     Waiting to upload...
+                  </div>
+                  <!-- ETA display -->
+                  <div
+                    id="upload-eta"
+                    class="text-center small text-muted mt-1 d-none"
+                  >
                   </div>
                 </div>
                 <div class="modal-footer">

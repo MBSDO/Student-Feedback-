@@ -2,6 +2,7 @@ import { API } from "/js/utilities.mjs";
 import { CommentModal } from "/js/comment_modal.mjs";
 import { Comment } from "/js/comment.mjs";
 import { SentimentChart } from "./sentiment_chart.mjs";
+import { escapeHtml } from "/js/security.mjs";
 
 export class Report {
   constructor() {
@@ -61,8 +62,8 @@ export class Report {
     if (this.summary_text && typeof this.summary_text === "string") {
       const box = document.getElementById("summary-box");
       const text = document.getElementById("summary-text");
-      // Convert markdown bold syntax to HTML
-      const htmlText = this.summary_text
+      // Convert markdown bold syntax to HTML (with XSS protection)
+      const htmlText = escapeHtml(this.summary_text)
         .trim()
         .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       text.innerHTML = htmlText;

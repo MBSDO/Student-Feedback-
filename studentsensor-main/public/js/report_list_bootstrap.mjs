@@ -39,7 +39,15 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   const semester = semesterInput.value.trim();
 
   if (!file || !professor || !course || !semester) {
-    alert("All fields are required.");
+    alert("All fields are required. Please fill in all form fields.");
+    isUploadInProgress = false;
+    return;
+  }
+  
+  // Validate file type
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    alert("Please upload a CSV file.");
+    isUploadInProgress = false;
     return;
   }
 
@@ -62,9 +70,15 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   status.innerText = "🟡 Uploading file...";
 
   try {
+    // Phase 1: Reading file
+    status.innerText = "📖 Reading file...";
+    progressBar.style.width = "2%";
+    progressBar.setAttribute("aria-valuenow", 2);
+    
     const text = await file.text();
-
-    // Phase 1: Upload file with XMLHttpRequest (progress bar 0–30%)
+    
+    // Phase 2: Upload file with XMLHttpRequest
+    let uploadResponse = null;
     await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       activeXHR = xhr;
@@ -79,15 +93,21 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
 
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 30);
+          const percent = Math.round((event.loaded / event.total) * 3); // 0-3% for upload
           progressBar.style.width = percent + "%";
           progressBar.setAttribute("aria-valuenow", percent);
+          status.innerText = `📤 Uploading file... (${Math.round((event.loaded / event.total) * 100)}%)`;
         }
       };
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
+          try {
+            uploadResponse = JSON.parse(xhr.responseText);
+            resolve(uploadResponse);
+          } catch (e) {
+            resolve(null);
+          }
         } else {
           reject(new Error(`Upload failed: ${xhr.status} ${xhr.statusText}`));
         }
@@ -105,31 +125,151 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       xhr.send(body);
     });
 
-    // Phase 2: Simulate processing progress (30% → 99%)
-    status.innerText =
-      "⚙️ Processing feedback (this may take 10–20 seconds)...";
-    progressBar.classList.replace("bg-primary", "bg-warning");
-
-    let fakeProgress = 30;
-    const interval = setInterval(() => {
-      fakeProgress += Math.random() * 5; // gradual, irregular increments
-      if (fakeProgress >= 99) {
-        fakeProgress = 99;
-        clearInterval(interval);
+    // Phase 3: Poll for real-time progress updates
+    const reportId = uploadResponse?.report?.rid;
+    if (!reportId) {
+      // If cached, we're done
+      if (uploadResponse?.cached) {
+        progressBar.style.width = "100%";
+        progressBar.setAttribute("aria-valuenow", 100);
+        progressBar.classList.replace("bg-primary", "bg-success");
+        status.innerText = "✅ Report already exists! Loading...";
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+        return;
       }
-      progressBar.style.width = `${fakeProgress}%`;
-      progressBar.setAttribute("aria-valuenow", fakeProgress);
-    }, 500);
+      // Otherwise, we can't track progress but upload succeeded
+      progressBar.style.width = "100%";
+      progressBar.setAttribute("aria-valuenow", 100);
+      progressBar.classList.replace("bg-primary", "bg-success");
+      status.innerText = "✅ Upload complete! Processing...";
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      return;
+    }
 
-    // Wait for real processing (simulate backend delay)
-    await new Promise((r) => setTimeout(r, 4000));
-
-    // Phase 3: Finalize
-    clearInterval(interval);
-    progressBar.style.width = "100%";
-    progressBar.setAttribute("aria-valuenow", 100);
-    progressBar.classList.replace("bg-warning", "bg-success");
-    status.innerText = "✅ Upload and processing complete!";
+    progressBar.classList.replace("bg-primary", "bg-info");
+    
+    let lastPercent = 3;
+    let targetPercent = 3;
+    let animationFrameId = null;
+    
+    // Smooth animation function
+    const animateProgress = () => {
+      if (lastPercent < targetPercent) {
+        const diff = targetPercent - lastPercent;
+        // Smooth increment - faster when far apart, slower when close
+        const increment = Math.max(0.5, diff / 15);
+        lastPercent = Math.min(lastPercent + increment, targetPercent);
+        progressBar.style.width = `${lastPercent}%`;
+        progressBar.setAttribute("aria-valuenow", Math.round(lastPercent));
+        
+        if (lastPercent < targetPercent) {
+          animationFrameId = requestAnimationFrame(animateProgress);
+        }
+      }
+    };
+    
+    const pollProgress = async () => {
+      try {
+        const response = await fetch(`/report/progress/${reportId}`);
+        const data = await response.json();
+        
+        const currentPercent = data.percent || 0;
+        
+        // Update target percent (don't go backwards)
+        if (currentPercent > targetPercent) {
+          targetPercent = Math.min(currentPercent, 99);
+          // Start animation if not already running
+          if (!animationFrameId) {
+            animationFrameId = requestAnimationFrame(animateProgress);
+          }
+        }
+        
+        // Update status message with ETA
+        let statusText = data.message || "Processing...";
+        if (data.eta !== null && data.eta > 0 && currentPercent < 100) {
+          const minutes = Math.floor(data.eta / 60);
+          const seconds = data.eta % 60;
+          if (minutes > 0) {
+            statusText += ` <span class="text-muted">• ETA: ${minutes}m ${seconds}s</span>`;
+          } else {
+            statusText += ` <span class="text-muted">• ETA: ${seconds}s</span>`;
+          }
+        }
+        
+        // Update status
+        const statusElement = document.getElementById("upload-status");
+        if (statusElement) {
+          statusElement.innerHTML = statusText;
+        }
+        
+        // Update progress bar color based on state
+        if (data.state) {
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+          switch(data.state) {
+            case "reading_file":
+            case "saving_comments":
+            case "writing_metadata":
+              progressBar.classList.add("bg-info");
+              break;
+            case "comparing_codebook":
+            case "sending_openai":
+            case "generating_tags":
+            case "placing_tags":
+              progressBar.classList.add("bg-warning");
+              break;
+            case "generating_summary":
+            case "finalizing":
+              progressBar.classList.add("bg-primary");
+              break;
+            case "complete":
+              progressBar.classList.add("bg-success");
+              break;
+            default:
+              progressBar.classList.add("bg-info");
+          }
+        }
+        
+        // Continue polling if not complete
+        if (currentPercent < 100) {
+          setTimeout(pollProgress, 500); // Poll every 500ms
+        } else {
+          // Complete! Ensure we're at 100%
+          if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+          }
+          targetPercent = 100;
+          lastPercent = 100;
+          progressBar.style.width = "100%";
+          progressBar.setAttribute("aria-valuenow", 100);
+          progressBar.classList.remove("bg-primary", "bg-info", "bg-warning");
+          progressBar.classList.add("bg-success");
+          status.innerText = "✅ Upload and processing complete!";
+          
+          // Trigger confetti
+          setTimeout(() => {
+            if (typeof confetti === 'function') {
+              confetti();
+            }
+          }, 300);
+          
+          // Reload page after a short delay
+          setTimeout(() => {
+            window.location.reload();
+          }, 1800);
+        }
+      } catch (error) {
+        console.error("Error polling progress:", error);
+        // Continue polling even on error (might be temporary)
+        setTimeout(pollProgress, 1000);
+      }
+    };
+    
+    // Start polling (pollProgress handles completion and page reload)
+    pollProgress();
 
     const modal = bootstrap.Modal.getInstance(
       document.getElementById("summary-upload-modal")

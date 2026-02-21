@@ -1,6 +1,7 @@
 import { API } from "/js/utilities.mjs";
 import { CommentRow, Placeholder } from "/js/templates.mjs";
 import { FilterButton } from "/js/filter_button.mjs";
+import { escapeHtml } from "/js/security.mjs";
 
 export class Comment {
   constructor(report) {

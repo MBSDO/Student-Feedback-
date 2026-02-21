@@ -106,8 +106,14 @@ export class Report {
     this.sentiment_chart.Render();
     this.sentiment_chart.Init();
 
-    document.getElementById("main-right").classList.remove("d-none");
-    document.getElementById("main-left").classList.remove("d-none");
+    const mainRight = document.getElementById("main-right");
+    if (mainRight) {
+      mainRight.classList.remove("d-none");
+    }
+    const mainLeft = document.getElementById("main-left");
+    if (mainLeft) {
+      mainLeft.classList.remove("d-none");
+    }
   }
 
   Init() {
@@ -160,17 +166,23 @@ export class Report {
         console.log("Saved");
       });
     }
-    this.clear_filters_button.addEventListener("click", () => {
-      this.DeactivateAllFilters();
-    });
-    this.clear_all_button.addEventListener(
-      "click",
-      this.ClearComments.bind(this)
-    );
-    this.download_button.addEventListener(
-      "click",
-      this.DownloadTableAsCSV.bind(this)
-    );
+    if (this.clear_filters_button) {
+      this.clear_filters_button.addEventListener("click", () => {
+        this.DeactivateAllFilters();
+      });
+    }
+    if (this.clear_all_button) {
+      this.clear_all_button.addEventListener(
+        "click",
+        this.ClearComments.bind(this)
+      );
+    }
+    if (this.download_button) {
+      this.download_button.addEventListener(
+        "click",
+        this.DownloadTableAsCSV.bind(this)
+      );
+    }
     setTimeout(() => this.ProcessComments(), 100);
   }
 

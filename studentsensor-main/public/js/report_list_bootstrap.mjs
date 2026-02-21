@@ -64,6 +64,20 @@ function updateOpenAIStatusIndicator(statusData, fetchError = null) {
     return;
   }
 
+  if (statusData?.code === "model_unavailable") {
+    indicator.classList.add("openai-status-unknown");
+    label.textContent = "OpenAI: Model Unavailable";
+    indicator.title = statusData.detail || "Configured model is unavailable";
+    return;
+  }
+
+  if (statusData?.code === "timeout") {
+    indicator.classList.add("openai-status-unknown");
+    label.textContent = "OpenAI: Timeout";
+    indicator.title = statusData.detail || "OpenAI health check timed out";
+    return;
+  }
+
   indicator.classList.add("openai-status-down");
   label.textContent = "OpenAI: Offline";
   indicator.title = statusData?.detail || "OpenAI unavailable";
@@ -169,6 +183,19 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   uploadBtn.disabled = true;
   const originalText = uploadBtn.textContent;
   uploadBtn.textContent = "Uploading...";
+  let deferUiResetToPolling = false;
+
+  const resetUploadUiState = () => {
+    fileInput.disabled =
+      professorInput.disabled =
+      courseInput.disabled =
+      semesterInput.disabled =
+        false;
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = originalText;
+    isUploadInProgress = false;
+    activeXHR = null;
+  };
 
   progressContainer.classList.remove("d-none");
   progressBar.style.width = "0%";
@@ -419,6 +446,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           if (pollingIntervalId) {
             clearTimeout(pollingIntervalId);
           }
+          resetUploadUiState();
           return;
         }
         
@@ -469,6 +497,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           progressBar.classList.remove("bg-primary", "bg-info", "bg-warning");
           progressBar.classList.add("bg-success");
           status.innerText = "✅ Upload and processing complete!";
+          resetUploadUiState();
           
           // Trigger confetti
           setTimeout(() => {
@@ -503,6 +532,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           if (pollingIntervalId) {
             clearTimeout(pollingIntervalId);
           }
+          resetUploadUiState();
           return;
         }
         
@@ -526,20 +556,13 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     };
     
     // Start polling (pollProgress handles completion and page reload)
+    deferUiResetToPolling = true;
     pollProgress();
 
     const modal = bootstrap.Modal.getInstance(
       document.getElementById("summary-upload-modal")
     );
     modal?.hide();
-
-    setTimeout(() => {
-      confetti();
-    }, 300);
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 1800);
   } catch (error) {
     browserLog("error", "upload_failed", {
       client_trace_id: clientTraceId,
@@ -554,15 +577,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     progressBar.style.width = "100%";
     progressBar.setAttribute("aria-valuenow", 100);
   } finally {
-    fileInput.disabled =
-      professorInput.disabled =
-      courseInput.disabled =
-      semesterInput.disabled =
-        false;
-    uploadBtn.disabled = false;
-    uploadBtn.textContent = originalText;
-    isUploadInProgress = false;
-    activeXHR = null;
+    if (!deferUiResetToPolling) {
+      resetUploadUiState();
+    }
   }
 });
 

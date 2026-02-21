@@ -231,6 +231,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       xhr.setRequestHeader("X-Client-Trace-Id", clientTraceId);
 
       xhr.onabort = () => {
+        activeXHR = null;
         browserLog("warn", "xhr_aborted", {
           client_trace_id: clientTraceId,
           server_trace_id: serverTraceId,
@@ -250,6 +251,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       };
 
       xhr.onload = () => {
+        activeXHR = null;
         serverTraceId = xhr.getResponseHeader("X-Upload-Trace-Id") || serverTraceId;
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
@@ -286,6 +288,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       };
 
       xhr.onerror = () => {
+        activeXHR = null;
         browserLog("error", "xhr_network_error", {
           client_trace_id: clientTraceId,
           server_trace_id: serverTraceId,
@@ -318,20 +321,16 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         progressBar.style.width = "100%";
         progressBar.setAttribute("aria-valuenow", 100);
         progressBar.classList.replace("bg-primary", "bg-success");
-        status.innerText = "✅ Report already exists! Loading...";
-        setTimeout(() => {
-          window.location.reload();
-        }, 1000);
+        status.innerText = "✅ Report already exists. Refresh when ready.";
+        resetUploadUiState();
         return;
       }
       // Otherwise, we can't track progress but upload succeeded
       progressBar.style.width = "100%";
       progressBar.setAttribute("aria-valuenow", 100);
       progressBar.classList.replace("bg-primary", "bg-success");
-      status.innerText = "✅ Upload complete! Processing...";
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
+      status.innerText = "✅ Upload complete. Refresh to see updates.";
+      resetUploadUiState();
       return;
     }
 
@@ -507,9 +506,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           }, 300);
           
           // Reload page after a short delay
-          setTimeout(() => {
-            window.location.reload();
-          }, 1800);
+          status.innerText = "✅ Upload and processing complete! Refresh to view updated report list.";
         }
       } catch (error) {
         browserLog("error", "poll_exception", {
@@ -599,8 +596,10 @@ document
     const uploadBtn = document.getElementById("upload-submit");
 
     if (isUploadInProgress && activeXHR) {
-      console.warn("⚠️ Canceling active upload...");
-      activeXHR.abort();
+      if (activeXHR.readyState !== XMLHttpRequest.DONE) {
+        console.warn("⚠️ Canceling active upload...");
+        activeXHR.abort();
+      }
       isUploadInProgress = false;
       activeXHR = null;
     }

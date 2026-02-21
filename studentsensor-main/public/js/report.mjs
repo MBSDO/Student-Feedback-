@@ -94,8 +94,13 @@ export class Report {
 
     this.Init();
 
-    this.modal = new CommentModal(this, "comment-input-modal");
-    if (this.comments.length === 0) this.modal.modal.show();
+    const commentModalElement = document.getElementById("comment-input-modal");
+    if (commentModalElement) {
+      this.modal = new CommentModal(this, "comment-input-modal");
+      if (this.comments.length === 0) this.modal.modal.show();
+    } else {
+      console.warn("⚠️ Comment modal (#comment-input-modal) not found in DOM.");
+    }
 
     this.sentiment_chart = new SentimentChart(
       this,
@@ -384,15 +389,25 @@ export class Report {
 
   async ProcessNextComment() {
     this.processing = true;
-    const comment = this.comments.find((comment) => comment.sentiment === null);
+    const comment = this.comments.find(
+      (comment) => comment.sentiment === null && !comment.processing_failed
+    );
     if (comment !== undefined) {
       this.SetProgress(
         1 -
           this.comments.filter((comment) => comment.sentiment === null).length /
             this.nullSentimentCount
       );
-      await comment.Process();
-      this.ApplyActiveFilters();
+      try {
+        await comment.Process();
+        this.ApplyActiveFilters();
+      } catch (error) {
+        comment.processing_failed = true;
+        console.error(
+          `Failed to process comment ${comment.cid}. Skipping and continuing.`,
+          error
+        );
+      }
       setTimeout(() => this.ProcessNextComment(), 100);
     } else {
       this.SetProgress(1);

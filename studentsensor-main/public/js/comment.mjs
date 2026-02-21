@@ -3,6 +3,29 @@ import { CommentRow, Placeholder } from "/js/templates.mjs";
 import { FilterButton } from "/js/filter_button.mjs";
 import { escapeHtml } from "/js/security.mjs";
 
+const makeTraceId = () => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `comment-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+};
+
+const commentLog = (level, event, data = {}) => {
+  const payload = {
+    ts: new Date().toISOString(),
+    event,
+    ...data,
+  };
+  const prefix = "[comment]";
+  if (level === "error") {
+    console.error(prefix, payload);
+  } else if (level === "warn") {
+    console.warn(prefix, payload);
+  } else {
+    console.log(prefix, payload);
+  }
+};
+
 export class Comment {
   constructor(report) {
     this.report = report;
@@ -281,6 +304,7 @@ export class Comment {
       .querySelector('[role="process"]')
       .addEventListener("click", async () => {
         try {
+          this.processing_failed = false;
           this.Populate(await API(`/comment/${this.cid}/clear`));
           this.UpdateRow();
           if (!this.report.processing) this.report.ProcessComments();
@@ -311,9 +335,40 @@ export class Comment {
   }
 
   async Process() {
-    console.log("Processing comment", this.cid);
-    const response = await API(`/comment/${this.cid}/process`);
-    this.Populate(response);
-    this.UpdateRow();
+    const clientTraceId = makeTraceId();
+    commentLog("info", "process_start", {
+      cid: this.cid,
+      rid: this.rid,
+      client_trace_id: clientTraceId,
+    });
+
+    try {
+      const response = await API(
+        `/comment/${this.cid}/process`,
+        {},
+        "POST",
+        {
+          headers: {
+            "X-Client-Trace-Id": clientTraceId,
+          },
+        }
+      );
+      this.Populate(response);
+      this.UpdateRow();
+      commentLog("info", "process_success", {
+        cid: this.cid,
+        rid: this.rid,
+        client_trace_id: clientTraceId,
+        server_trace_id: response?.trace_id || null,
+      });
+    } catch (error) {
+      commentLog("error", "process_failed", {
+        cid: this.cid,
+        rid: this.rid,
+        client_trace_id: clientTraceId,
+        error: error?.message || String(error),
+      });
+      throw error;
+    }
   }
 }

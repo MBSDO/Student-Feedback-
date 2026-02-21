@@ -7,7 +7,7 @@ import io
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
-from tiktoken import encoding_for_model
+from tiktoken import encoding_for_model, get_encoding
 from operator import itemgetter
 
 # Ensure stdout is UTF-8 encoded for emoji support (Node reads stdout)
@@ -23,7 +23,16 @@ MAX_TOKENS = int(os.getenv("OPENAI_MAX_TOKENS", 300))
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
-enc = encoding_for_model(OPENAI_MODEL)
+try:
+    enc = encoding_for_model(OPENAI_MODEL)
+except KeyError:
+    # Newer models may not be mapped yet by local tiktoken versions.
+    # cl100k_base is a safe tokenizer fallback for budgeting prompt size.
+    print(
+        f"⚠️ [WARNING] Unknown tokenizer mapping for model '{OPENAI_MODEL}'. Falling back to cl100k_base.",
+        file=sys.stderr,
+    )
+    enc = get_encoding("cl100k_base")
 max_prompt_tokens = 10000 # Don't remove (used in coding batch calls)
 max_for_summary = 500
 

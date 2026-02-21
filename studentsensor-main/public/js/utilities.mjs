@@ -1,4 +1,4 @@
-export async function API(url, data = {}, method = "POST") {
+export async function API(url, data = {}, method = "POST", config = {}) {
   console.log("📡 API called with URL:", url);
 
   return new Promise(async (resolve, reject) => {
@@ -17,6 +17,10 @@ export async function API(url, data = {}, method = "POST") {
         if (data && Object.keys(data).length > 0) {
           options.body = JSON.stringify(data);
         }
+      }
+
+      if (config && config.headers && typeof config.headers === "object") {
+        options.headers = { ...options.headers, ...config.headers };
       }
 
       const response = await fetch(url, options);

@@ -66,7 +66,7 @@ Install the following software before running the project locally:
 ## Installation and Setup
 1. Clone the repository and move into it.
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/MBSDO/Student-Feedback-.git
    cd studentsensor-main
    ```
 2. Install Node dependencies.

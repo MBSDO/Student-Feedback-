@@ -4,6 +4,8 @@ console.log("✅ report_list_bootstrap.mjs loaded");
 
 let isUploadInProgress = false;
 let activeXHR = null;
+let currentUploadContext = null;
+let allowUploadModalHide = false;
 
 const makeTraceId = () => {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -215,6 +217,15 @@ startOpenAIStatusPolling();
 loadWelcomeUser();
 
 const uploadModalElement = document.getElementById("summary-upload-modal");
+const uploadModalInstance = uploadModalElement
+  ? bootstrap.Modal.getOrCreateInstance(uploadModalElement)
+  : null;
+
+function setUploadFileClearEnabled(enabled) {
+  const clearButton = document.getElementById("upload-file-clear");
+  if (!clearButton) return;
+  clearButton.disabled = !enabled;
+}
 
 const setUploadModalDismissEnabled = (enabled) => {
   if (!uploadModalElement) return;
@@ -224,15 +235,95 @@ const setUploadModalDismissEnabled = (enabled) => {
   }
 };
 
+async function requestUploadCancellation(reportId) {
+  if (!reportId) return;
+  try {
+    const response = await fetch(`/report/${reportId}/cancel`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok && response.status !== 404) {
+      throw new Error(`Cancel failed: ${response.status}`);
+    }
+  } catch (error) {
+    browserLog("warn", "cancel_request_failed", {
+      report_id: reportId,
+      message: error?.message || "Cancel request failed",
+    });
+  }
+}
+
+async function cancelActiveUpload({ closeModal = false } = {}) {
+  const context = currentUploadContext;
+  if (!context || context.canceling) return;
+
+  context.canceling = true;
+  context.canceled = true;
+  isUploadInProgress = false;
+
+  if (context.pollingTimeoutId) {
+    clearTimeout(context.pollingTimeoutId);
+    context.pollingTimeoutId = null;
+  }
+  if (context.animationFrameId) {
+    cancelAnimationFrame(context.animationFrameId);
+    context.animationFrameId = null;
+  }
+
+  if (activeXHR && activeXHR.readyState !== XMLHttpRequest.DONE) {
+    activeXHR.abort();
+  }
+
+  await requestUploadCancellation(context.reportId);
+
+  const statusElement = document.getElementById("upload-status");
+  const progressBar = document.getElementById("upload-progress-bar");
+  if (statusElement) {
+    statusElement.innerText = "⚠️ Upload canceled.";
+  }
+  if (progressBar) {
+    progressBar.classList.remove("bg-primary", "bg-info", "bg-warning", "bg-success");
+    progressBar.classList.add("bg-danger");
+  }
+
+  if (typeof context.resetUi === "function") {
+    context.resetUi();
+  }
+  currentUploadContext = null;
+
+  if (closeModal && uploadModalInstance) {
+    allowUploadModalHide = true;
+    uploadModalInstance.hide();
+    allowUploadModalHide = false;
+  }
+}
+
 if (uploadModalElement) {
   uploadModalElement.addEventListener("hide.bs.modal", (event) => {
-    if (!isUploadInProgress) return;
+    if (allowUploadModalHide || !isUploadInProgress) return;
     event.preventDefault();
     const statusElement = document.getElementById("upload-status");
     if (statusElement) {
-      statusElement.innerText =
-        "⏳ Upload in progress. Please wait for completion.";
+      statusElement.innerText = "⚠️ Canceling upload...";
     }
+    void cancelActiveUpload({ closeModal: true });
+  });
+}
+
+const uploadFileInput = document.getElementById("upload-file");
+const uploadFileClearButton = document.getElementById("upload-file-clear");
+
+if (uploadFileInput && uploadFileClearButton) {
+  setUploadFileClearEnabled(false);
+  uploadFileInput.addEventListener("change", () => {
+    setUploadFileClearEnabled(Boolean(uploadFileInput.files?.length));
+  });
+  uploadFileClearButton.addEventListener("click", () => {
+    if (isUploadInProgress) return;
+    uploadFileInput.value = "";
+    setUploadFileClearEnabled(false);
   });
 }
 
@@ -283,6 +374,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
   uploadBtn.textContent = "Uploading...";
   let deferUiResetToPolling = false;
   setUploadModalDismissEnabled(false);
+  setUploadFileClearEnabled(false);
 
   const resetUploadUiState = () => {
     fileInput.disabled =
@@ -294,7 +386,17 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     uploadBtn.textContent = originalText;
     isUploadInProgress = false;
     activeXHR = null;
+    setUploadFileClearEnabled(Boolean(fileInput.files?.length));
     setUploadModalDismissEnabled(true);
+  };
+
+  currentUploadContext = {
+    canceling: false,
+    canceled: false,
+    reportId: null,
+    pollingTimeoutId: null,
+    animationFrameId: null,
+    resetUi: resetUploadUiState,
   };
 
   progressContainer.classList.remove("d-none");
@@ -408,6 +510,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
 
     // Phase 3: Poll for real-time progress updates
     const reportId = uploadResponse?.report?.rid;
+    if (currentUploadContext) {
+      currentUploadContext.reportId = reportId || null;
+    }
     let lastLoggedPercent = -1;
     let lastLoggedState = "";
     browserLog("info", "polling_started", {
@@ -458,6 +563,10 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
     
     // Smooth animation function
     const animateProgress = () => {
+      if (currentUploadContext?.canceled) {
+        animationFrameId = null;
+        return;
+      }
       if (lastPercent < targetPercent) {
         const diff = targetPercent - lastPercent;
         // Smooth increment - faster when far apart, slower when close
@@ -468,11 +577,19 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         
         if (lastPercent < targetPercent) {
           animationFrameId = requestAnimationFrame(animateProgress);
+          if (currentUploadContext) {
+            currentUploadContext.animationFrameId = animationFrameId;
+          }
         }
+      } else {
+        animationFrameId = null;
       }
     };
     
     const pollProgress = async () => {
+      if (currentUploadContext?.canceled) {
+        return;
+      }
       try {
         const nowMs = Date.now();
         const elapsedSeconds = Math.floor((nowMs - pollStartedAt) / 1000);
@@ -523,6 +640,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
             clearTimeout(pollingIntervalId);
           }
           resetUploadUiState();
+          currentUploadContext = null;
           return;
         }
 
@@ -609,6 +727,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
             clearTimeout(pollingIntervalId);
           }
           resetUploadUiState();
+          currentUploadContext = null;
           return;
         }
         
@@ -642,6 +761,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
         // Continue polling if not complete
         if (currentPercent < 100) {
           pollingIntervalId = setTimeout(pollProgress, 1200); // Poll every 1.2s
+          if (currentUploadContext) {
+            currentUploadContext.pollingTimeoutId = pollingIntervalId;
+          }
         } else {
           browserLog("info", "poll_complete", {
             client_trace_id: clientTraceId,
@@ -660,6 +782,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
           progressBar.classList.add("bg-success");
           status.innerText = "✅ Upload and processing complete!";
           resetUploadUiState();
+          currentUploadContext = null;
           
           // Trigger confetti
           setTimeout(() => {
@@ -694,6 +817,7 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
             clearTimeout(pollingIntervalId);
           }
           resetUploadUiState();
+          currentUploadContext = null;
           return;
         }
         
@@ -705,6 +829,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
             statusElement.innerHTML = `⚠️ Connection issue (${errorCount}/${MAX_ERRORS}). Retrying...`;
           }
           pollingIntervalId = setTimeout(pollProgress, 2000); // Retry after 2 seconds
+          if (currentUploadContext) {
+            currentUploadContext.pollingTimeoutId = pollingIntervalId;
+          }
         } else {
           // Other error - might be server error
           const statusElement = document.getElementById("upload-status");
@@ -712,6 +839,9 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
             statusElement.innerHTML = `⚠️ Error: ${error.message || "Unknown error"} (${errorCount}/${MAX_ERRORS}). Retrying...`;
           }
           pollingIntervalId = setTimeout(pollProgress, 2000);
+          if (currentUploadContext) {
+            currentUploadContext.pollingTimeoutId = pollingIntervalId;
+          }
         }
       }
     };
@@ -729,14 +859,19 @@ document.getElementById("upload-submit").addEventListener("click", async () => {
       stack: error?.stack || null,
     });
     console.error(error);
-    status.innerText = "❌ Upload failed. Please try again.";
-    progressBar.classList.remove("bg-primary", "bg-warning");
-    progressBar.classList.add("bg-danger");
-    progressBar.style.width = "100%";
-    progressBar.setAttribute("aria-valuenow", 100);
+    if (error?.message === "Upload canceled") {
+      status.innerText = "⚠️ Upload canceled.";
+    } else {
+      status.innerText = "❌ Upload failed. Please try again.";
+      progressBar.classList.remove("bg-primary", "bg-warning");
+      progressBar.classList.add("bg-danger");
+      progressBar.style.width = "100%";
+      progressBar.setAttribute("aria-valuenow", 100);
+    }
   } finally {
     if (!deferUiResetToPolling) {
       resetUploadUiState();
+      currentUploadContext = null;
     }
   }
 });
@@ -755,15 +890,17 @@ document
       "upload-progress-container"
     );
     const uploadBtn = document.getElementById("upload-submit");
+    const clearButton = document.getElementById("upload-file-clear");
 
-    if (isUploadInProgress && activeXHR) {
-      if (activeXHR.readyState !== XMLHttpRequest.DONE) {
-        console.warn("⚠️ Canceling active upload...");
-        activeXHR.abort();
-      }
-      isUploadInProgress = false;
-      activeXHR = null;
+    if (currentUploadContext?.pollingTimeoutId) {
+      clearTimeout(currentUploadContext.pollingTimeoutId);
     }
+    if (currentUploadContext?.animationFrameId) {
+      cancelAnimationFrame(currentUploadContext.animationFrameId);
+    }
+    currentUploadContext = null;
+    isUploadInProgress = false;
+    activeXHR = null;
 
     // Reset field values
     fileInput.value = "";
@@ -778,6 +915,9 @@ document
     semesterInput.disabled = false;
     uploadBtn.disabled = false;
     uploadBtn.textContent = "Upload";
+    if (clearButton) {
+      clearButton.disabled = true;
+    }
 
     // Reset progress bar and container
     progressContainer.classList.add("d-none");
